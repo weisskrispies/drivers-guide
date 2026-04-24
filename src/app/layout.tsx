@@ -13,9 +13,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Driver's Guide — scenic roads finder",
+  title: "Driver's Guide — SF Bay Area Driving Roads",
   description:
-    "A curated map of the best driving roads in the US, with distance, difficulty, and conditions.",
+    "Find and check off the best Sunday-morning driving roads within 100 miles of San Francisco. Curated from enthusiast forums.",
+};
+
+export const viewport = {
+  themeColor: "#18181b",
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
