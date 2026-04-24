@@ -16,25 +16,30 @@ type Props = {
   home: LatLng | null;
   currentLocation: LatLng | null;
   activeSlug: string | null;
+  /** Fit the map to the active road's path when it changes. Set by the
+   *  list / modal (true) but not by in-map clicks (false) so the map
+   *  doesn't jump under the user's finger. */
+  fitToActive: boolean;
   onSelect: (slug: string) => void;
   onOpen?: (slug: string) => void;
 };
 
+// OpenTopoMap: keyless, free, actual topographic tiles (contour lines +
+// SRTM hillshading). Attribution is required.
 const STYLE = {
   version: 8 as const,
   sources: {
     basemap: {
       type: "raster" as const,
       tiles: [
-        "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-        "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-        "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-        "https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
+        "https://a.tile.opentopomap.org/{z}/{x}/{y}.png",
+        "https://b.tile.opentopomap.org/{z}/{x}/{y}.png",
+        "https://c.tile.opentopomap.org/{z}/{x}/{y}.png",
       ],
       tileSize: 256,
       attribution:
-        '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>',
-      maxzoom: 19,
+        'Map data: © <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> contributors, SRTM | Map style: © <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)',
+      maxzoom: 17,
     },
   },
   layers: [
@@ -47,9 +52,13 @@ const STYLE = {
 };
 
 const ACCENT = "#fc5200";
-const LINE_CASING = "#0b0b0b";
+const LINE_CASING = "rgba(10, 10, 10, 0.85)";
 
-function routeFeatures(roads: Road[], activeSlug: string | null, done: Set<string>) {
+function routeFeatures(
+  roads: Road[],
+  activeSlug: string | null,
+  done: Set<string>,
+) {
   return {
     type: "FeatureCollection" as const,
     features: roads.map((road) => ({
@@ -91,13 +100,13 @@ function markerClass(state: { done: boolean; active: boolean }): string {
     "road-marker",
     "flex h-8 w-8 items-center justify-center rounded-full border-2",
     "text-[11px] font-semibold tabular-nums cursor-pointer",
-    "shadow-[0_4px_14px_rgba(0,0,0,0.55)] transition-all duration-150",
+    "shadow-[0_4px_14px_rgba(0,0,0,0.45)] transition-[box-shadow,border-color,background-color,color] duration-150",
     state.done
-      ? "bg-[color:var(--accent)] border-[#0b0b0b] text-white"
-      : "bg-[#0b0b0b] border-[color:var(--accent)] text-[color:var(--accent)]",
+      ? "bg-[color:var(--accent)] border-white text-white"
+      : "bg-white border-[color:var(--accent)] text-[color:var(--accent)]",
     state.active
-      ? "scale-[1.25] z-10 ring-4 ring-[color:var(--accent-ring)]"
-      : "hover:scale-110",
+      ? "z-10 ring-4 ring-[color:var(--accent-ring)]"
+      : "",
   ].join(" ");
 }
 
@@ -107,6 +116,7 @@ export default function RoadMap({
   home,
   currentLocation,
   activeSlug,
+  fitToActive,
   onSelect,
   onOpen,
 }: Props) {
@@ -122,6 +132,9 @@ export default function RoadMap({
   const onSelectRef = useRef(onSelect);
   const onOpenRef = useRef(onOpen);
   const hasFitRef = useRef(false);
+  // Set to `slug` by in-map click handlers; the fit effect skips a pending
+  // fit when this matches the new activeSlug so taps don't yank the map.
+  const skipNextFitForRef = useRef<string | null>(null);
   useLayoutEffect(() => {
     activeSlugRef.current = activeSlug;
     onSelectRef.current = onSelect;
@@ -160,7 +173,7 @@ export default function RoadMap({
     };
   }, []);
 
-  // Add the routes source + layers once, then keep the data in sync.
+  // Routes source + layers.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -171,7 +184,6 @@ export default function RoadMap({
       if (!map.getSource("routes")) {
         map.addSource("routes", { type: "geojson", data });
 
-        // White casing underneath for contrast on dark tiles.
         map.addLayer({
           id: "routes-casing",
           type: "line",
@@ -185,12 +197,11 @@ export default function RoadMap({
               6, ["case", ["==", ["get", "active"], 1], 5, 3],
               12, ["case", ["==", ["get", "active"], 1], 11, 7],
             ],
-            "line-opacity": 0.8,
+            "line-opacity": 0.85,
           },
           layout: { "line-cap": "round", "line-join": "round" },
         });
 
-        // The actual colored line.
         map.addLayer({
           id: "routes-line",
           type: "line",
@@ -208,7 +219,7 @@ export default function RoadMap({
               "case",
               ["==", ["get", "active"], 1],
               1,
-              0.55,
+              0.7,
             ],
           },
           layout: { "line-cap": "round", "line-join": "round" },
@@ -217,6 +228,7 @@ export default function RoadMap({
         map.on("click", "routes-line", (e) => {
           const slug = e.features?.[0]?.properties?.slug;
           if (typeof slug !== "string") return;
+          skipNextFitForRef.current = slug;
           if (slug === activeSlugRef.current) onOpenRef.current?.(slug);
           else onSelectRef.current(slug);
         });
@@ -262,6 +274,7 @@ export default function RoadMap({
         el.addEventListener("click", (ev) => {
           ev.stopPropagation();
           const slug = road.slug;
+          skipNextFitForRef.current = slug;
           if (slug === activeSlugRef.current) onOpenRef.current?.(slug);
           else onSelectRef.current(slug);
         });
@@ -300,10 +313,18 @@ export default function RoadMap({
     });
   }, [done, activeSlug]);
 
-  // Fit the active road's full path into view.
+  // Optional: fit the active road's path into view, but only when the
+  // selection came from outside the map (list / modal). In-map clicks set
+  // skipNextFitForRef so the map stays put.
   useEffect(() => {
+    if (!fitToActive) return;
+    if (!activeSlug) return;
+    if (skipNextFitForRef.current === activeSlug) {
+      skipNextFitForRef.current = null;
+      return;
+    }
     const map = mapRef.current;
-    if (!map || !activeSlug) return;
+    if (!map) return;
     const road = roads.find((r) => r.slug === activeSlug);
     if (!road || road.path.length === 0) return;
     const doFit = () => {
@@ -315,7 +336,7 @@ export default function RoadMap({
     };
     if (map.isStyleLoaded()) doFit();
     else map.once("load", doFit);
-  }, [activeSlug, roads]);
+  }, [activeSlug, roads, fitToActive]);
 
   // Home marker.
   useEffect(() => {
@@ -327,7 +348,7 @@ export default function RoadMap({
       if (!home) return;
       const el = document.createElement("div");
       el.className =
-        "h-4 w-4 rounded-full bg-[color:var(--accent)] ring-2 ring-[#0b0b0b] shadow";
+        "h-4 w-4 rounded-full bg-[color:var(--accent)] ring-2 ring-white shadow-[0_2px_8px_rgba(0,0,0,0.5)]";
       el.title = "Home";
       homeMarkerRef.current = new maplibregl.Marker({ element: el })
         .setLngLat([home.lng, home.lat])
@@ -347,7 +368,7 @@ export default function RoadMap({
       if (!currentLocation) return;
       const el = document.createElement("div");
       el.className =
-        "h-3 w-3 rounded-full bg-sky-400 ring-2 ring-[#0b0b0b] shadow";
+        "h-3 w-3 rounded-full bg-sky-500 ring-2 ring-white shadow-[0_2px_8px_rgba(0,0,0,0.5)]";
       el.title = "Your current location";
       gpsMarkerRef.current = new maplibregl.Marker({ element: el })
         .setLngLat([currentLocation.lng, currentLocation.lat])
