@@ -13,43 +13,51 @@ export default function LevelBadge({
   const pct = Math.round(progress * 100);
 
   return (
-    <div className="rounded-xl border border-zinc-200 bg-gradient-to-br from-amber-50 to-white p-4 shadow-sm dark:border-zinc-800 dark:from-amber-950/40 dark:to-zinc-950">
-      <div className="flex items-baseline justify-between gap-3">
-        <div>
-          <div className="text-xs uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-            Current rank
-          </div>
-          <div className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
-            {level.title}
-          </div>
-        </div>
-        <div className="text-right text-sm text-zinc-600 dark:text-zinc-400">
-          <span className="font-semibold text-zinc-900 dark:text-zinc-100">
-            {count}
-          </span>
-          <span> / {total} roads</span>
+    <div className="flex items-center gap-3">
+      <div className="relative h-9 w-9 shrink-0">
+        <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90">
+          <circle
+            cx="18"
+            cy="18"
+            r="15"
+            stroke="var(--surface-3)"
+            strokeWidth="3"
+            fill="none"
+          />
+          <circle
+            cx="18"
+            cy="18"
+            r="15"
+            stroke="var(--accent)"
+            strokeWidth="3"
+            fill="none"
+            strokeLinecap="round"
+            strokeDasharray={`${(pct / 100) * 94.25} 94.25`}
+            className="transition-[stroke-dasharray] duration-500"
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center text-[10px] font-semibold tabular-nums text-[var(--text)]">
+          {count}
         </div>
       </div>
-      <p className="mt-2 text-sm italic text-zinc-600 dark:text-zinc-400">
-        {level.blurb}
-      </p>
-      {next ? (
-        <div className="mt-3">
-          <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
-            <div
-              className="h-full bg-amber-500 transition-all"
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-          <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-            {next.threshold - count} more to <strong>{next.title}</strong>
-          </div>
+      <div className="min-w-0 leading-tight">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-dim)]">
+          {next ? "Rank" : "Max rank"}
         </div>
-      ) : (
-        <div className="mt-3 text-xs font-semibold uppercase tracking-wider text-amber-600">
-          Max rank — the mountains are yours.
+        <div className="truncate text-[13px] font-semibold tracking-tight text-[var(--text)]">
+          {level.title}
         </div>
-      )}
+        <div className="truncate text-[11px] text-[var(--text-muted)]">
+          {next ? (
+            <>
+              {next.threshold - count} to{" "}
+              <span className="text-[color:var(--accent)]">{next.title}</span>
+            </>
+          ) : (
+            <span>The mountains are yours · {count}/{total}</span>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

@@ -5,12 +5,14 @@ import { formatMiles, formatMinutes } from "@/lib/geo";
 
 type Props = {
   road: Road;
+  index: number;
   distanceFromOrigin: number | null;
   originLabel: string | null;
   done: boolean;
   active: boolean;
   onToggleDone: () => void;
   onSelect: () => void;
+  onOpen: () => void;
 };
 
 const DIFFICULTY_LABEL: Record<Road["difficulty"], string> = {
@@ -20,48 +22,55 @@ const DIFFICULTY_LABEL: Record<Road["difficulty"], string> = {
   expert: "Expert",
 };
 
-const DIFFICULTY_COLOR: Record<Road["difficulty"], string> = {
-  easy: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200",
-  moderate: "bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200",
-  spirited: "bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-200",
-  expert: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200",
-};
-
-const SURFACE_LABEL: Record<Road["surfaceQuality"], string> = {
-  excellent: "Excellent surface",
-  good: "Good surface",
-  fair: "Fair surface",
-  poor: "Poor surface",
-  mixed: "Mixed surface",
+const DIFFICULTY_TONE: Record<Road["difficulty"], string> = {
+  easy: "text-emerald-400",
+  moderate: "text-sky-400",
+  spirited: "text-amber-400",
+  expert: "text-red-400",
 };
 
 export default function RoadCard({
   road,
+  index,
   distanceFromOrigin,
   originLabel,
   done,
   active,
   onToggleDone,
   onSelect,
+  onOpen,
 }: Props) {
   return (
     <article
       onClick={onSelect}
+      onDoubleClick={onOpen}
       className={[
-        "group cursor-pointer rounded-xl border bg-white p-4 shadow-sm transition-all hover:shadow-md dark:bg-zinc-950",
+        "group relative cursor-pointer overflow-hidden rounded-2xl border bg-[var(--surface)] p-4 transition-all",
         active
-          ? "border-amber-400 ring-2 ring-amber-200 dark:border-amber-500 dark:ring-amber-900"
-          : "border-zinc-200 dark:border-zinc-800",
+          ? "border-[color:var(--accent)] shadow-[0_0_0_1px_var(--accent),0_10px_32px_-8px_rgba(252,82,0,0.35)]"
+          : "border-[var(--border)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-2)]",
         done ? "opacity-80" : "",
       ].join(" ")}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start gap-3">
+        <span
+          className={[
+            "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums transition-colors",
+            active
+              ? "bg-[color:var(--accent)] text-white"
+              : "bg-[var(--surface-3)] text-[var(--text-muted)] group-hover:bg-[color:var(--accent)] group-hover:text-white",
+          ].join(" ")}
+        >
+          {index + 1}
+        </span>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 text-xs text-zinc-500">
-            <span>{road.region}</span>
+          <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.14em] text-[var(--text-dim)]">
+            <span className="truncate">{road.region}</span>
             {distanceFromOrigin !== null && originLabel && (
               <>
-                <span aria-hidden>•</span>
+                <span aria-hidden className="text-[var(--text-dim)]">
+                  ·
+                </span>
                 <span>
                   {formatMiles(distanceFromOrigin)} from {originLabel}
                 </span>
@@ -70,13 +79,13 @@ export default function RoadCard({
           </div>
           <h3
             className={[
-              "mt-0.5 text-lg font-semibold leading-tight text-zinc-900 dark:text-zinc-50",
-              done ? "line-through decoration-emerald-500 decoration-2" : "",
+              "mt-1 text-[15px] font-semibold leading-snug tracking-tight text-[var(--text)]",
+              done ? "line-through decoration-[color:var(--accent)] decoration-2" : "",
             ].join(" ")}
           >
             {road.name}
           </h3>
-          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="mt-1 line-clamp-2 text-[13px] text-[var(--text-muted)]">
             {road.summary}
           </p>
         </div>
@@ -89,111 +98,93 @@ export default function RoadCard({
           aria-pressed={done}
           aria-label={done ? "Mark as not driven" : "Mark as driven"}
           className={[
-            "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 text-lg font-bold transition-colors",
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 text-sm transition-colors",
             done
-              ? "border-emerald-500 bg-emerald-500 text-white hover:bg-emerald-600"
-              : "border-zinc-300 bg-white text-zinc-400 hover:border-emerald-500 hover:text-emerald-500 dark:border-zinc-700 dark:bg-zinc-900",
+              ? "border-[color:var(--accent)] bg-[color:var(--accent)] text-white hover:bg-[color:var(--accent-hover)]"
+              : "border-[var(--border-strong)] bg-transparent text-[var(--text-dim)] hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]",
           ].join(" ")}
         >
           {done ? "✓" : ""}
         </button>
       </div>
 
-      <dl className="mt-3 grid grid-cols-2 gap-y-1 gap-x-3 text-sm sm:grid-cols-4">
-        <div>
-          <dt className="text-[11px] uppercase tracking-wide text-zinc-500">Length</dt>
-          <dd className="font-medium text-zinc-900 dark:text-zinc-100">
-            {formatMiles(road.distanceMiles)}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-[11px] uppercase tracking-wide text-zinc-500">Elevation</dt>
-          <dd className="font-medium text-zinc-900 dark:text-zinc-100">
-            +{road.elevationGainFt.toLocaleString()} ft
-          </dd>
-        </div>
-        <div>
-          <dt className="text-[11px] uppercase tracking-wide text-zinc-500">Drive time</dt>
-          <dd className="font-medium text-zinc-900 dark:text-zinc-100">
-            {formatMinutes(road.estDriveMinutes)}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-[11px] uppercase tracking-wide text-zinc-500">Surface</dt>
-          <dd className="font-medium text-zinc-900 dark:text-zinc-100">
-            {SURFACE_LABEL[road.surfaceQuality]}
-          </dd>
-        </div>
+      <dl className="mt-3 grid grid-cols-4 gap-2 text-[11px]">
+        <StatPill label="MILES" value={formatMiles(road.distanceMiles)} />
+        <StatPill label="TIME" value={formatMinutes(road.estDriveMinutes)} />
+        <StatPill
+          label="ELEV"
+          value={`+${Math.round(road.elevationGainFt).toLocaleString()}ʹ`}
+        />
+        <StatPill
+          label="GRADE"
+          value={DIFFICULTY_LABEL[road.difficulty]}
+          tone={DIFFICULTY_TONE[road.difficulty]}
+        />
       </dl>
 
-      <div className="mt-3 flex flex-wrap items-center gap-1.5">
-        <span
-          className={[
-            "rounded-full px-2 py-0.5 text-xs font-semibold",
-            DIFFICULTY_COLOR[road.difficulty],
-          ].join(" ")}
-        >
-          {DIFFICULTY_LABEL[road.difficulty]}
-        </span>
-        {road.characteristics.map((c) => (
+      <div className="mt-3 flex flex-wrap items-center gap-1">
+        {road.characteristics.slice(0, 3).map((c) => (
           <span
             key={c}
-            className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+            className="rounded-full border border-[var(--border)] bg-[var(--surface-2)] px-2 py-0.5 text-[10px] text-[var(--text-muted)]"
           >
             {c}
           </span>
         ))}
+        {road.characteristics.length > 3 && (
+          <span className="text-[10px] text-[var(--text-dim)]">
+            +{road.characteristics.length - 3}
+          </span>
+        )}
       </div>
 
       {active && (
-        <div className="mt-4 space-y-3 border-t border-zinc-200 pt-3 text-sm dark:border-zinc-800">
-          <p className="text-zinc-700 dark:text-zinc-300">{road.description}</p>
-          <div>
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-              Traffic & other users
-            </div>
-            <p className="text-zinc-700 dark:text-zinc-300">{road.trafficNotes}</p>
-          </div>
-          {road.hazards.length > 0 && (
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                Watch for
-              </div>
-              <ul className="list-inside list-disc text-zinc-700 dark:text-zinc-300">
-                {road.hazards.map((h) => (
-                  <li key={h}>{h}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          <div>
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-              Best time
-            </div>
-            <p className="text-zinc-700 dark:text-zinc-300">{road.bestTime}</p>
-          </div>
-          <div>
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-              Sources
-            </div>
-            <ul className="space-y-0.5">
-              {road.sources.map((s) => (
-                <li key={s.url}>
-                  <a
-                    href={s.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-sky-700 underline underline-offset-2 hover:text-sky-900 dark:text-sky-400 dark:hover:text-sky-200"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {s.label} ↗
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
+        <div className="mt-3 border-t border-[var(--border)] pt-3">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpen();
+            }}
+            className="inline-flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.1em] text-[color:var(--accent)] hover:text-[color:var(--accent-hover)]"
+          >
+            Open route
+            <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+              <path
+                fillRule="evenodd"
+                d="M7.22 14.78a.75.75 0 0 0 1.06 0l5-5a.75.75 0 0 0 0-1.06l-5-5a.75.75 0 0 0-1.06 1.06L11.69 9H3.75a.75.75 0 0 0 0 1.5h7.94l-4.47 4.22a.75.75 0 0 0 0 1.06Z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </button>
         </div>
       )}
     </article>
+  );
+}
+
+function StatPill({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: string;
+}) {
+  return (
+    <div className="rounded-md bg-[var(--surface-2)] px-2 py-1.5">
+      <div className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--text-dim)]">
+        {label}
+      </div>
+      <div
+        className={[
+          "mt-0.5 truncate text-[12px] font-semibold tabular-nums",
+          tone ?? "text-[var(--text)]",
+        ].join(" ")}
+      >
+        {value}
+      </div>
+    </div>
   );
 }

@@ -1,31 +1,92 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #0b0b0b;
+  --surface: #141414;
+  --surface-2: #1c1c1c;
+  --surface-3: #262626;
+  --border: #262626;
+  --border-strong: #3a3a3a;
+  --text: #f4f4f5;
+  --text-muted: #a1a1aa;
+  --text-dim: #71717a;
+  --accent: #fc5200;
+  --accent-hover: #ff6a1a;
+  --accent-soft: rgba(252, 82, 0, 0.14);
+  --accent-ring: rgba(252, 82, 0, 0.35);
+  --success: #22c55e;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
   font-family:
     var(--font-geist-sans, system-ui),
     -apple-system,
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
+  color-scheme: dark;
+}
+
+/* Subtle topographic contour pattern, fixed to the viewport so it doesn't
+   scroll with content. Low opacity keeps it textural, not decorative. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.06;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='600' viewBox='0 0 600 600'><g fill='none' stroke='%23fc5200' stroke-width='1'><path d='M-50,120 C100,90 220,180 340,150 C460,120 560,190 680,170'/><path d='M-50,180 C120,150 240,240 360,210 C480,180 580,250 700,230'/><path d='M-50,250 C80,220 220,290 340,260 C440,235 560,290 700,280'/><path d='M-50,320 C120,300 240,360 360,330 C480,300 580,370 700,350'/><path d='M-50,390 C110,360 240,440 360,410 C480,380 580,440 700,430'/><path d='M-50,460 C120,430 250,510 370,480 C480,455 580,510 700,500'/><path d='M-50,530 C110,510 240,580 360,550 C480,520 580,580 700,570'/><path d='M80,40 C160,60 240,30 320,60 C400,90 480,50 560,70'/><path d='M120,600 C200,560 280,590 360,560 C440,530 520,570 600,550'/></g></svg>");
+  background-size: 600px 600px;
+  background-repeat: repeat;
+}
+
+/* Ensure app content sits above the pattern. */
+body > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* MapLibre control restyle for dark theme */
+.maplibregl-ctrl-group {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+}
+.maplibregl-ctrl-group button {
+  filter: invert(0.9) hue-rotate(180deg);
+}
+.maplibregl-ctrl-attrib {
+  background: rgba(20, 20, 20, 0.8) !important;
+  color: var(--text-muted) !important;
+}
+.maplibregl-ctrl-attrib a {
+  color: var(--text-muted) !important;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+/* Native form controls adopt dark palette */
+input,
+select,
+textarea {
+  color-scheme: dark;
 }
