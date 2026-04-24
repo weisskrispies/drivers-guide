@@ -9,65 +9,85 @@ import { RoadsMap } from "./roads-map";
 type Props = { roads: Road[] };
 
 export function RoadsExplorer({ roads }: Props) {
-  const [selectedId, setSelectedId] = useState<string | null>(
-    roads[0]?.id ?? null,
-  );
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
-  const selected = useMemo(
-    () => roads.find((r) => r.id === selectedId) ?? null,
+  const selectedIndex = useMemo(
+    () => (selectedId ? roads.findIndex((r) => r.id === selectedId) : -1),
     [roads, selectedId],
   );
+  const selected = selectedIndex >= 0 ? roads[selectedIndex] : null;
 
   const handleSelect = (id: string) => {
     setSelectedId(id);
     setDetailOpen(true);
   };
 
+  const handleBack = () => setDetailOpen(false);
+
   return (
-    <div className="grid flex-1 min-h-0 grid-cols-1 lg:grid-cols-[360px_1fr]">
-      <aside className="flex min-h-0 flex-col border-b border-zinc-200 dark:border-zinc-800 lg:border-b-0 lg:border-r">
-        <div className="border-b border-zinc-200 px-5 py-4 dark:border-zinc-800">
-          <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+    <div className="flex h-full min-h-0 flex-col bg-[#fafaf8] dark:bg-zinc-950">
+      <header className="flex h-14 shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-5 dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="flex items-baseline gap-3">
+          <span className="text-[15px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
             Driver&rsquo;s Guide
-          </h1>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            {roads.length} curated road{roads.length === 1 ? "" : "s"}
-          </p>
+          </span>
+          <span className="hidden text-xs text-zinc-500 dark:text-zinc-400 sm:inline">
+            Great roads, mapped.
+          </span>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <RoadList
+        <div className="text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
+          {roads.length} {roads.length === 1 ? "road" : "roads"}
+        </div>
+      </header>
+
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        <div className="relative order-last min-h-[55vh] flex-1 lg:order-first lg:min-h-0">
+          <RoadsMap
             roads={roads}
             selectedId={selectedId}
             onSelect={handleSelect}
           />
         </div>
-      </aside>
 
-      <div className="relative min-h-[60vh] lg:min-h-0">
-        <RoadsMap
-          roads={roads}
-          selectedId={selectedId}
-          onSelect={handleSelect}
-        />
-
-        {selected && detailOpen && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 p-4 sm:inset-auto sm:right-4 sm:top-4 sm:bottom-auto sm:w-96">
-            <div className="pointer-events-auto max-h-[70vh] overflow-y-auto rounded-lg border border-zinc-200 bg-white/95 p-5 shadow-xl backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
-              <button
-                type="button"
-                onClick={() => setDetailOpen(false)}
-                className="float-right -mr-1 -mt-1 rounded p-1 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                aria-label="Close details"
-              >
-                <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                  <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
-                </svg>
-              </button>
-              <RoadDetail road={selected} />
-            </div>
-          </div>
-        )}
+        <aside
+          className={[
+            "flex min-h-0 shrink-0 flex-col border-zinc-200 bg-[#fafaf8] dark:border-zinc-800 dark:bg-zinc-950",
+            "border-b lg:w-[420px] lg:border-b-0 lg:border-l",
+          ].join(" ")}
+        >
+          {detailOpen && selected ? (
+            <RoadDetail
+              road={selected}
+              index={selectedIndex}
+              onBack={handleBack}
+            />
+          ) : (
+            <>
+              <div className="flex items-baseline justify-between border-b border-zinc-200 px-5 py-3 dark:border-zinc-800">
+                <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-zinc-500 dark:text-zinc-400">
+                  Curated drives
+                </h2>
+                {selected && (
+                  <button
+                    type="button"
+                    onClick={() => setDetailOpen(true)}
+                    className="text-xs font-medium text-red-600 hover:underline dark:text-red-400"
+                  >
+                    View details →
+                  </button>
+                )}
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                <RoadList
+                  roads={roads}
+                  selectedId={selectedId}
+                  onSelect={handleSelect}
+                />
+              </div>
+            </>
+          )}
+        </aside>
       </div>
     </div>
   );

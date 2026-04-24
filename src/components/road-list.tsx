@@ -10,11 +10,11 @@ const DIFFICULTY_LABEL: Record<NonNullable<Road["difficulty"]>, string> = {
   expert: "Expert",
 };
 
-const DIFFICULTY_COLOR: Record<NonNullable<Road["difficulty"]>, string> = {
-  easy: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200",
-  moderate: "bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200",
-  spirited: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200",
-  expert: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200",
+const DIFFICULTY_TONE: Record<NonNullable<Road["difficulty"]>, string> = {
+  easy: "text-emerald-700 dark:text-emerald-400",
+  moderate: "text-sky-700 dark:text-sky-400",
+  spirited: "text-amber-700 dark:text-amber-400",
+  expert: "text-red-700 dark:text-red-400",
 };
 
 type Props = {
@@ -33,8 +33,8 @@ export function RoadList({ roads, selectedId, onSelect }: Props) {
   }, [selectedId]);
 
   return (
-    <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
-      {roads.map((road) => {
+    <ol className="flex flex-col gap-2 p-4">
+      {roads.map((road, index) => {
         const selected = road.id === selectedId;
         return (
           <li key={road.id}>
@@ -47,60 +47,61 @@ export function RoadList({ roads, selectedId, onSelect }: Props) {
               onClick={() => onSelect(road.id)}
               aria-current={selected ? "true" : undefined}
               className={[
-                "block w-full text-left px-5 py-4 transition-colors",
+                "group flex w-full items-start gap-3 rounded-2xl border p-4 text-left transition-all",
                 selected
-                  ? "bg-red-50 dark:bg-red-950/30"
-                  : "hover:bg-zinc-50 dark:hover:bg-zinc-900/50",
+                  ? "border-zinc-900 bg-white shadow-[0_6px_18px_rgba(0,0,0,0.06)] dark:border-zinc-100 dark:bg-zinc-900"
+                  : "border-transparent bg-white/70 hover:border-zinc-200 hover:bg-white hover:shadow-[0_4px_12px_rgba(0,0,0,0.04)] dark:bg-zinc-900/40 dark:hover:border-zinc-800 dark:hover:bg-zinc-900",
               ].join(" ")}
             >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="font-semibold text-zinc-900 dark:text-zinc-50">
-                    {road.name}
-                  </h3>
-                  {road.region && (
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                      {road.region}
-                    </p>
+              <span
+                className={[
+                  "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
+                  selected
+                    ? "bg-red-600 text-white"
+                    : "bg-zinc-100 text-zinc-700 group-hover:bg-zinc-900 group-hover:text-white dark:bg-zinc-800 dark:text-zinc-200",
+                ].join(" ")}
+              >
+                {index + 1}
+              </span>
+              <div className="min-w-0 flex-1">
+                <h3 className="truncate text-[15px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+                  {road.name}
+                </h3>
+                {road.region && (
+                  <p className="mt-0.5 truncate text-xs text-zinc-500 dark:text-zinc-400">
+                    {road.region}
+                  </p>
+                )}
+                <div className="mt-2.5 flex items-center gap-3 text-xs text-zinc-600 dark:text-zinc-400">
+                  {road.distance_miles != null && (
+                    <span className="tabular-nums">
+                      <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                        {road.distance_miles}
+                      </span>{" "}
+                      mi
+                    </span>
+                  )}
+                  {road.est_drive_minutes != null && (
+                    <span className="tabular-nums">
+                      <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                        {road.est_drive_minutes}
+                      </span>{" "}
+                      min
+                    </span>
+                  )}
+                  {road.difficulty && (
+                    <span
+                      className={`font-medium ${DIFFICULTY_TONE[road.difficulty]}`}
+                    >
+                      {DIFFICULTY_LABEL[road.difficulty]}
+                    </span>
                   )}
                 </div>
-                {road.difficulty && (
-                  <span
-                    className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${DIFFICULTY_COLOR[road.difficulty]}`}
-                  >
-                    {DIFFICULTY_LABEL[road.difficulty]}
-                  </span>
-                )}
               </div>
-              {road.summary && (
-                <p className="mt-1.5 text-sm text-zinc-600 dark:text-zinc-300 line-clamp-2">
-                  {road.summary}
-                </p>
-              )}
-              <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
-                {road.distance_miles != null && (
-                  <div>
-                    <dt className="sr-only">Distance</dt>
-                    <dd>{road.distance_miles} mi</dd>
-                  </div>
-                )}
-                {road.est_drive_minutes != null && (
-                  <div>
-                    <dt className="sr-only">Drive time</dt>
-                    <dd>~{road.est_drive_minutes} min</dd>
-                  </div>
-                )}
-                {road.elevation_gain_ft != null && (
-                  <div>
-                    <dt className="sr-only">Elevation gain</dt>
-                    <dd>{road.elevation_gain_ft.toLocaleString()} ft gain</dd>
-                  </div>
-                )}
-              </dl>
             </button>
           </li>
         );
       })}
-    </ul>
+    </ol>
   );
 }

@@ -8,25 +8,34 @@ import maplibregl, {
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { Road } from "@/lib/roads/types";
 
-const LINE_COLOR_DEFAULT = "#6b7280";
-const LINE_COLOR_SELECTED = "#ef4444";
+const ACCENT = "#dc2626";
+const LINE_DEFAULT = "#18181b";
 
 const STYLE = {
   version: 8 as const,
   sources: {
-    osm: {
+    basemap: {
       type: "raster" as const,
-      tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+      tiles: [
+        "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png",
+        "https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png",
+        "https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png",
+        "https://d.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png",
+      ],
       tileSize: 256,
-      attribution: "© OpenStreetMap contributors",
+      attribution:
+        '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>',
       maxzoom: 19,
     },
   },
   layers: [
     {
-      id: "osm",
+      id: "basemap",
       type: "raster" as const,
-      source: "osm",
+      source: "basemap",
+      paint: {
+        "raster-saturation": -0.25,
+      },
     },
   ],
 };
@@ -67,6 +76,21 @@ function allBounds(roads: Road[]): LngLatBoundsLike | null {
   ];
 }
 
+function createMarkerEl(index: number, selected: boolean): HTMLButtonElement {
+  const el = document.createElement("button");
+  el.type = "button";
+  el.className = [
+    "flex h-8 w-8 items-center justify-center rounded-full text-[13px] font-semibold",
+    "border-2 shadow-[0_2px_8px_rgba(0,0,0,0.18)] transition-all",
+    "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+    selected
+      ? "bg-red-600 text-white border-white scale-110 z-10"
+      : "bg-white text-zinc-900 border-white hover:scale-110",
+  ].join(" ");
+  el.textContent = String(index + 1);
+  return el;
+}
+
 type Props = {
   roads: Road[];
   selectedId: string | null;
@@ -76,33 +100,52 @@ type Props = {
 export function RoadsMap({ roads, selectedId, onSelect }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
-  const markersRef = useRef<maplibregl.Marker[]>([]);
+  const markersRef = useRef<Map<string, maplibregl.Marker>>(new Map());
   const onSelectRef = useRef(onSelect);
   useLayoutEffect(() => {
     onSelectRef.current = onSelect;
   }, [onSelect]);
 
-  // Initial mount: create the map.
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
-    const bounds = allBounds(roads);
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: STYLE,
       center: [-98, 39],
-      zoom: 3.2,
+      zoom: 3.4,
       attributionControl: { compact: true },
+      cooperativeGestures: false,
     });
     mapRef.current = map;
-
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+    map.addControl(
+      new maplibregl.NavigationControl({ showCompass: false }),
+      "top-right",
+    );
 
     map.on("load", () => {
       map.addSource("roads", {
         type: "geojson",
         data: roadsFeatureCollection(roads, selectedId),
       });
+
+      map.addLayer({
+        id: "roads-line-casing",
+        type: "line",
+        source: "roads",
+        paint: {
+          "line-color": "#ffffff",
+          "line-width": [
+            "case",
+            ["==", ["get", "selected"], 1],
+            8,
+            5,
+          ],
+          "line-opacity": 0.9,
+        },
+        layout: { "line-cap": "round", "line-join": "round" },
+      });
+
       map.addLayer({
         id: "roads-line",
         type: "line",
@@ -111,23 +154,27 @@ export function RoadsMap({ roads, selectedId, onSelect }: Props) {
           "line-color": [
             "case",
             ["==", ["get", "selected"], 1],
-            LINE_COLOR_SELECTED,
-            LINE_COLOR_DEFAULT,
+            ACCENT,
+            LINE_DEFAULT,
           ],
           "line-width": [
             "case",
             ["==", ["get", "selected"], 1],
-            5,
-            3,
+            4.5,
+            2.5,
           ],
-          "line-opacity": 0.9,
+          "line-opacity": [
+            "case",
+            ["==", ["get", "selected"], 1],
+            1,
+            0.55,
+          ],
         },
         layout: { "line-cap": "round", "line-join": "round" },
       });
 
       map.on("click", "roads-line", (e) => {
-        const feature = e.features?.[0];
-        const id = feature?.properties?.id;
+        const id = e.features?.[0]?.properties?.id;
         if (typeof id === "string") onSelectRef.current(id);
       });
       map.on("mouseenter", "roads-line", () => {
@@ -137,43 +184,58 @@ export function RoadsMap({ roads, selectedId, onSelect }: Props) {
         map.getCanvas().style.cursor = "";
       });
 
-      for (const road of roads) {
-        const el = document.createElement("button");
-        el.type = "button";
+      const bounds = allBounds(roads);
+      if (bounds) map.fitBounds(bounds, { padding: 80, duration: 0 });
+    });
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Rebuild markers whenever roads or selection changes.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const markers = markersRef.current;
+
+    const build = () => {
+      markers.forEach((m) => m.remove());
+      markers.clear();
+
+      roads.forEach((road, index) => {
+        const el = createMarkerEl(index, road.id === selectedId);
         el.setAttribute("aria-label", road.name);
-        el.className =
-          "block h-3.5 w-3.5 rounded-full border-2 border-white bg-zinc-900 shadow-md transition-transform hover:scale-125 focus:outline-none focus:ring-2 focus:ring-red-500";
         el.addEventListener("click", (ev) => {
           ev.stopPropagation();
           onSelectRef.current(road.id);
         });
-        const marker = new maplibregl.Marker({ element: el })
+        const marker = new maplibregl.Marker({ element: el, anchor: "center" })
           .setLngLat([road.start_lng, road.start_lat])
           .addTo(map);
-        markersRef.current.push(marker);
-      }
+        markers.set(road.id, marker);
+      });
+    };
 
-      if (bounds) {
-        map.fitBounds(bounds, { padding: 60, duration: 0 });
-      }
-    });
+    if (map.isStyleLoaded()) build();
+    else map.once("load", build);
 
     return () => {
-      markersRef.current.forEach((m) => m.remove());
-      markersRef.current = [];
-      map.remove();
-      mapRef.current = null;
+      markers.forEach((m) => m.remove());
+      markers.clear();
     };
-    // We intentionally only initialize once; subsequent updates use the effects below.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [roads, selectedId]);
 
-  // Update line styling / source data when selection changes.
+  // Keep line source in sync with selection.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     const apply = () => {
-      const source = map.getSource("roads") as maplibregl.GeoJSONSource | undefined;
+      const source = map.getSource("roads") as
+        | maplibregl.GeoJSONSource
+        | undefined;
       if (!source) return;
       source.setData(roadsFeatureCollection(roads, selectedId));
     };
@@ -187,10 +249,15 @@ export function RoadsMap({ roads, selectedId, onSelect }: Props) {
     if (!map || !selectedId) return;
     const road = roads.find((r) => r.id === selectedId);
     if (!road) return;
-    const doFly = () => map.fitBounds(roadBounds(road), { padding: 100, duration: 900, maxZoom: 12 });
+    const doFly = () =>
+      map.fitBounds(roadBounds(road), {
+        padding: { top: 120, right: 80, bottom: 120, left: 80 },
+        duration: 900,
+        maxZoom: 11.5,
+      });
     if (map.isStyleLoaded()) doFly();
     else map.once("load", doFly);
   }, [roads, selectedId]);
 
-  return <div ref={containerRef} className="h-full w-full" />;
+  return <div ref={containerRef} className="h-full w-full bg-[#f4f2ee]" />;
 }
