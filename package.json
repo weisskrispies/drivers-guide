@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "fetch-routes": "node scripts/fetch-routes.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",

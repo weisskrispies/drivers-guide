@@ -6,6 +6,9 @@ export type RoadSource = {
   url: string;
 };
 
+/** [lng, lat] — MapLibre/GeoJSON convention. */
+export type LngLat = [number, number];
+
 export type Road = {
   slug: string;
   name: string;
@@ -23,6 +26,8 @@ export type Road = {
   bestTime: string;
   start: { lat: number; lng: number; label: string };
   end: { lat: number; lng: number; label: string };
+  /** Waypoints along the road, [lng, lat], start-first, end-last. */
+  path: LngLat[];
   sources: RoadSource[];
 };
 

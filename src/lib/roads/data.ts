@@ -1,10 +1,20 @@
 import type { Road } from "./types";
 
 /**
- * Curated SF Bay Area driving roads. Coordinates are approximate start/end
- * points good enough for distance sorting + map markers. Sources are the
- * enthusiast forum threads that consistently surface these as "go-to" drives.
+ * Curated SF Bay Area driving roads. Waypoint paths are hand-crafted
+ * approximations that follow the real road corridor — accurate enough to
+ * show the route's shape on a zoomed-out map. Replace with OSRM-routed
+ * polylines via `npm run fetch-routes` for pixel-accurate geometry.
+ *
+ * Coordinates are [lng, lat] for `path` (MapLibre/GeoJSON convention) and
+ * lat/lng object for `start`/`end` (human-readable).
  */
+
+const SOURCE_RENNLIST = {
+  label: "Rennlist — SF Bay Area Best Driving Roads",
+  url: "https://rennlist.com/forums/west-us-rennlist-region/998154-sf-bay-area-best-driving-roads-for-a-sunday-morning-blast.html",
+};
+
 export const ROADS: Road[] = [
   {
     slug: "hwy-1-pacifica-hmb",
@@ -23,14 +33,22 @@ export const ROADS: Road[] = [
     characteristics: ["coastal", "sweepers", "scenic", "tunnel"],
     hazards: ["fog", "cyclists", "wildlife at dusk"],
     bestTime: "Sunrise — fog burns off and traffic is minimal",
-    start: { lat: 37.6094, lng: -122.4913, label: "Pacifica" },
+    start: { lat: 37.5917, lng: -122.4962, label: "Pacifica (Linda Mar)" },
     end: { lat: 37.4636, lng: -122.4286, label: "Half Moon Bay" },
-    sources: [
-      {
-        label: "Rennlist — SF Bay Area Best Driving Roads",
-        url: "https://rennlist.com/forums/west-us-rennlist-region/998154-sf-bay-area-best-driving-roads-for-a-sunday-morning-blast.html",
-      },
+    path: [
+      [-122.4962, 37.5917],
+      [-122.5014, 37.5847],
+      [-122.5097, 37.5802],
+      [-122.5120, 37.5695],
+      [-122.5150, 37.5498],
+      [-122.5103, 37.5413],
+      [-122.5133, 37.5238],
+      [-122.4928, 37.5000],
+      [-122.4706, 37.5029],
+      [-122.4501, 37.4795],
+      [-122.4286, 37.4636],
     ],
+    sources: [SOURCE_RENNLIST],
   },
   {
     slug: "hwy-84-la-honda",
@@ -50,14 +68,22 @@ export const ROADS: Road[] = [
     characteristics: ["redwoods", "technical", "tight corners", "low light"],
     hazards: ["damp patches", "gravel at driveway exits", "motorcycles"],
     bestTime: "Weekday mornings before 9am",
-    start: { lat: 37.4206, lng: -122.2573, label: "Sky Londa (Hwy 35)" },
-    end: { lat: 37.3193, lng: -122.4022, label: "San Gregorio" },
-    sources: [
-      {
-        label: "Rennlist — SF Bay Area Best Driving Roads",
-        url: "https://rennlist.com/forums/west-us-rennlist-region/998154-sf-bay-area-best-driving-roads-for-a-sunday-morning-blast.html",
-      },
+    start: { lat: 37.4244, lng: -122.2572, label: "Sky Londa (Hwy 35)" },
+    end: { lat: 37.3247, lng: -122.3856, label: "San Gregorio" },
+    path: [
+      [-122.2572, 37.4244],
+      [-122.2695, 37.4210],
+      [-122.2805, 37.4056],
+      [-122.2827, 37.3837],
+      [-122.2776, 37.3635],
+      [-122.2805, 37.3391],
+      [-122.2888, 37.3266],
+      [-122.3203, 37.3244],
+      [-122.3480, 37.3210],
+      [-122.3720, 37.3230],
+      [-122.3856, 37.3247],
     ],
+    sources: [SOURCE_RENNLIST],
   },
   {
     slug: "hwy-9-saratoga-boulder-creek",
@@ -77,14 +103,18 @@ export const ROADS: Road[] = [
     characteristics: ["mixed pace", "elevation change", "forested"],
     hazards: ["broken pavement in spots", "debris after storms"],
     bestTime: "Weekday mornings; avoid summer afternoons",
-    start: { lat: 37.2373, lng: -122.1326, label: "Saratoga Gap" },
+    start: { lat: 37.2566, lng: -122.1593, label: "Saratoga Gap" },
     end: { lat: 37.1263, lng: -122.1225, label: "Boulder Creek" },
-    sources: [
-      {
-        label: "Rennlist — SF Bay Area Best Driving Roads",
-        url: "https://rennlist.com/forums/west-us-rennlist-region/998154-sf-bay-area-best-driving-roads-for-a-sunday-morning-blast.html",
-      },
+    path: [
+      [-122.1593, 37.2566],
+      [-122.1744, 37.2373],
+      [-122.1803, 37.2147],
+      [-122.1740, 37.1918],
+      [-122.1511, 37.1650],
+      [-122.1348, 37.1423],
+      [-122.1225, 37.1263],
     ],
+    sources: [SOURCE_RENNLIST],
   },
   {
     slug: "skyline-35-sky-londa-saratoga",
@@ -103,14 +133,19 @@ export const ROADS: Road[] = [
     characteristics: ["ridge", "sweepers", "viewpoints"],
     hazards: ["cyclists", "deer at dawn/dusk"],
     bestTime: "Early morning, any day",
-    start: { lat: 37.4206, lng: -122.2573, label: "Sky Londa" },
-    end: { lat: 37.2373, lng: -122.1326, label: "Saratoga Gap" },
-    sources: [
-      {
-        label: "Rennlist — SF Bay Area Best Driving Roads",
-        url: "https://rennlist.com/forums/west-us-rennlist-region/998154-sf-bay-area-best-driving-roads-for-a-sunday-morning-blast.html",
-      },
+    start: { lat: 37.4244, lng: -122.2572, label: "Sky Londa" },
+    end: { lat: 37.2566, lng: -122.1593, label: "Saratoga Gap" },
+    path: [
+      [-122.2572, 37.4244],
+      [-122.2558, 37.4022],
+      [-122.2410, 37.3800],
+      [-122.2244, 37.3659],
+      [-122.2075, 37.3423],
+      [-122.1915, 37.3136],
+      [-122.1730, 37.2843],
+      [-122.1593, 37.2566],
     ],
+    sources: [SOURCE_RENNLIST],
   },
   {
     slug: "page-mill-road",
@@ -130,14 +165,17 @@ export const ROADS: Road[] = [
     characteristics: ["hill climb", "switchbacks", "narrow"],
     hazards: ["blind crests", "cyclists", "oncoming cars mid-corner"],
     bestTime: "Weekday mornings",
-    start: { lat: 37.4123, lng: -122.1543, label: "Palo Alto foothills" },
-    end: { lat: 37.3608, lng: -122.1952, label: "Skyline Blvd" },
-    sources: [
-      {
-        label: "Rennlist — SF Bay Area Best Driving Roads",
-        url: "https://rennlist.com/forums/west-us-rennlist-region/998154-sf-bay-area-best-driving-roads-for-a-sunday-morning-blast.html",
-      },
+    start: { lat: 37.4030, lng: -122.1373, label: "Palo Alto (Foothill)" },
+    end: { lat: 37.3404, lng: -122.1915, label: "Skyline Blvd" },
+    path: [
+      [-122.1373, 37.4030],
+      [-122.1484, 37.3890],
+      [-122.1701, 37.3770],
+      [-122.1869, 37.3627],
+      [-122.1946, 37.3500],
+      [-122.1915, 37.3404],
     ],
+    sources: [SOURCE_RENNLIST],
   },
   {
     slug: "old-la-honda-road",
@@ -157,14 +195,16 @@ export const ROADS: Road[] = [
     characteristics: ["one-lane", "redwoods", "historic"],
     hazards: ["cyclists", "no shoulder", "blind corners"],
     bestTime: "Very early weekday — never on summer Saturdays",
-    start: { lat: 37.401, lng: -122.2381, label: "Woodside side" },
-    end: { lat: 37.339, lng: -122.2692, label: "Skyline Blvd" },
-    sources: [
-      {
-        label: "Rennlist — SF Bay Area Best Driving Roads",
-        url: "https://rennlist.com/forums/west-us-rennlist-region/998154-sf-bay-area-best-driving-roads-for-a-sunday-morning-blast.html",
-      },
+    start: { lat: 37.3924, lng: -122.2619, label: "Woodside (Portola Rd)" },
+    end: { lat: 37.3801, lng: -122.2650, label: "Skyline Blvd" },
+    path: [
+      [-122.2619, 37.3924],
+      [-122.2650, 37.3868],
+      [-122.2685, 37.3840],
+      [-122.2670, 37.3815],
+      [-122.2650, 37.3801],
     ],
+    sources: [SOURCE_RENNLIST],
   },
   {
     slug: "alpine-road",
@@ -183,14 +223,17 @@ export const ROADS: Road[] = [
     characteristics: ["flowing", "mixed pace", "climb"],
     hazards: ["cyclists", "gravel in shaded corners"],
     bestTime: "Weekday mornings",
-    start: { lat: 37.383, lng: -122.199, label: "Portola Valley" },
-    end: { lat: 37.3448, lng: -122.2592, label: "Skyline Blvd" },
-    sources: [
-      {
-        label: "Rennlist — SF Bay Area Best Driving Roads",
-        url: "https://rennlist.com/forums/west-us-rennlist-region/998154-sf-bay-area-best-driving-roads-for-a-sunday-morning-blast.html",
-      },
+    start: { lat: 37.3862, lng: -122.1889, label: "Portola Valley" },
+    end: { lat: 37.3671, lng: -122.2655, label: "Skyline Blvd" },
+    path: [
+      [-122.1889, 37.3862],
+      [-122.2040, 37.3862],
+      [-122.2180, 37.3820],
+      [-122.2340, 37.3740],
+      [-122.2510, 37.3700],
+      [-122.2655, 37.3671],
     ],
+    sources: [SOURCE_RENNLIST],
   },
   {
     slug: "mt-hamilton-130",
@@ -210,14 +253,20 @@ export const ROADS: Road[] = [
     characteristics: ["switchbacks", "destination drive", "summit"],
     hazards: ["livestock on road", "cattle guards", "no fuel up top"],
     bestTime: "Weekday mornings; fall for clearest air",
-    start: { lat: 37.3373, lng: -121.8209, label: "Alum Rock / East SJ" },
+    start: { lat: 37.3744, lng: -121.8298, label: "Alum Rock (East SJ)" },
     end: { lat: 37.3414, lng: -121.6429, label: "Lick Observatory" },
-    sources: [
-      {
-        label: "Rennlist — SF Bay Area Best Driving Roads",
-        url: "https://rennlist.com/forums/west-us-rennlist-region/998154-sf-bay-area-best-driving-roads-for-a-sunday-morning-blast.html",
-      },
+    path: [
+      [-121.8298, 37.3744],
+      [-121.7950, 37.3730],
+      [-121.7620, 37.3680],
+      [-121.7320, 37.3620],
+      [-121.7040, 37.3540],
+      [-121.6800, 37.3500],
+      [-121.6620, 37.3460],
+      [-121.6520, 37.3430],
+      [-121.6429, 37.3414],
     ],
+    sources: [SOURCE_RENNLIST],
   },
   {
     slug: "mines-road",
@@ -242,14 +291,20 @@ export const ROADS: Road[] = [
       "no fuel",
     ],
     bestTime: "Anytime a weekday — start early for cool pavement",
-    start: { lat: 37.6594, lng: -121.7221, label: "Livermore" },
-    end: { lat: 37.4072, lng: -121.5133, label: "The Junction" },
-    sources: [
-      {
-        label: "Rennlist — SF Bay Area Best Driving Roads",
-        url: "https://rennlist.com/forums/west-us-rennlist-region/998154-sf-bay-area-best-driving-roads-for-a-sunday-morning-blast.html",
-      },
+    start: { lat: 37.6515, lng: -121.7462, label: "Livermore (Tesla Rd)" },
+    end: { lat: 37.3838, lng: -121.5192, label: "The Junction" },
+    path: [
+      [-121.7462, 37.6515],
+      [-121.7180, 37.6050],
+      [-121.6920, 37.5600],
+      [-121.6650, 37.5180],
+      [-121.6350, 37.4800],
+      [-121.6050, 37.4530],
+      [-121.5750, 37.4270],
+      [-121.5450, 37.4050],
+      [-121.5192, 37.3838],
     ],
+    sources: [SOURCE_RENNLIST],
   },
   {
     slug: "mt-diablo-south-gate",
@@ -269,21 +324,24 @@ export const ROADS: Road[] = [
     characteristics: ["summit", "scenic", "state park"],
     hazards: ["cyclists climbing", "15 mph hairpins", "bumpy summit road"],
     bestTime: "Clear winter mornings after a storm",
-    start: { lat: 37.8335, lng: -121.9307, label: "South Gate (Danville)" },
-    end: { lat: 37.8816, lng: -121.9143, label: "Summit" },
-    sources: [
-      {
-        label: "Rennlist — SF Bay Area Best Driving Roads",
-        url: "https://rennlist.com/forums/west-us-rennlist-region/998154-sf-bay-area-best-driving-roads-for-a-sunday-morning-blast.html",
-      },
+    start: { lat: 37.8275, lng: -121.9505, label: "South Gate (Danville)" },
+    end: { lat: 37.8817, lng: -121.9145, label: "Summit" },
+    path: [
+      [-121.9505, 37.8275],
+      [-121.9430, 37.8370],
+      [-121.9375, 37.8470],
+      [-121.9290, 37.8570],
+      [-121.9220, 37.8680],
+      [-121.9175, 37.8760],
+      [-121.9145, 37.8817],
     ],
+    sources: [SOURCE_RENNLIST],
   },
   {
     slug: "kings-mountain-road",
     name: "Kings Mountain Road",
     region: "Santa Cruz Mountains",
-    summary:
-      "Woodside up to Skyline — smooth, technical, postcard-pretty.",
+    summary: "Woodside up to Skyline — smooth, technical, postcard-pretty.",
     description:
       "Shorter and friendlier than Old La Honda but more technical than Skyline. Great connector from 280 up to the ridge for a Skyline → 84 loop.",
     distanceMiles: 5.2,
@@ -295,14 +353,16 @@ export const ROADS: Road[] = [
     characteristics: ["climb", "connector", "forested"],
     hazards: ["cyclists", "tight driveways"],
     bestTime: "Weekday mornings",
-    start: { lat: 37.4301, lng: -122.2542, label: "Woodside" },
-    end: { lat: 37.4518, lng: -122.3065, label: "Skyline Blvd" },
-    sources: [
-      {
-        label: "Rennlist — SF Bay Area Best Driving Roads",
-        url: "https://rennlist.com/forums/west-us-rennlist-region/998154-sf-bay-area-best-driving-roads-for-a-sunday-morning-blast.html",
-      },
+    start: { lat: 37.4284, lng: -122.2592, label: "Woodside" },
+    end: { lat: 37.4497, lng: -122.2908, label: "Skyline Blvd" },
+    path: [
+      [-122.2592, 37.4284],
+      [-122.2680, 37.4330],
+      [-122.2780, 37.4390],
+      [-122.2855, 37.4450],
+      [-122.2908, 37.4497],
     ],
+    sources: [SOURCE_RENNLIST],
   },
   {
     slug: "hwy-152-hecker-pass",
@@ -321,14 +381,18 @@ export const ROADS: Road[] = [
     characteristics: ["pass", "sweepers", "open"],
     hazards: ["commuter traffic", "trucks"],
     bestTime: "Weekend mid-morning",
-    start: { lat: 37.007, lng: -121.5685, label: "Gilroy" },
-    end: { lat: 36.9597, lng: -121.7272, label: "Watsonville" },
-    sources: [
-      {
-        label: "Rennlist — SF Bay Area Best Driving Roads",
-        url: "https://rennlist.com/forums/west-us-rennlist-region/998154-sf-bay-area-best-driving-roads-for-a-sunday-morning-blast.html",
-      },
+    start: { lat: 37.0158, lng: -121.5683, label: "Gilroy" },
+    end: { lat: 36.9103, lng: -121.7569, label: "Watsonville" },
+    path: [
+      [-121.5683, 37.0158],
+      [-121.6050, 37.0210],
+      [-121.6430, 37.0197],
+      [-121.6840, 37.0117],
+      [-121.7200, 36.9780],
+      [-121.7420, 36.9430],
+      [-121.7569, 36.9103],
     ],
+    sources: [SOURCE_RENNLIST],
   },
   {
     slug: "hwy-1-point-reyes-marshall",
@@ -347,14 +411,17 @@ export const ROADS: Road[] = [
     characteristics: ["coastal", "flowing", "scenic"],
     hazards: ["cyclists", "cows on shoulder"],
     bestTime: "Weekend mornings",
-    start: { lat: 38.0684, lng: -122.806, label: "Point Reyes Station" },
-    end: { lat: 38.172, lng: -122.891, label: "Marshall" },
-    sources: [
-      {
-        label: "Rennlist — SF Bay Area Best Driving Roads",
-        url: "https://rennlist.com/forums/west-us-rennlist-region/998154-sf-bay-area-best-driving-roads-for-a-sunday-morning-blast.html",
-      },
+    start: { lat: 38.0678, lng: -122.8061, label: "Point Reyes Station" },
+    end: { lat: 38.1582, lng: -122.8911, label: "Marshall" },
+    path: [
+      [-122.8061, 38.0678],
+      [-122.8270, 38.0805],
+      [-122.8480, 38.1000],
+      [-122.8700, 38.1260],
+      [-122.8870, 38.1490],
+      [-122.8911, 38.1582],
     ],
+    sources: [SOURCE_RENNLIST],
   },
   {
     slug: "bohemian-highway",
@@ -373,13 +440,15 @@ export const ROADS: Road[] = [
     characteristics: ["redwoods", "cruiser", "scenic"],
     hazards: ["damp shade patches"],
     bestTime: "Late afternoon when sun streaks through the redwoods",
-    start: { lat: 38.4063, lng: -122.9487, label: "Occidental" },
-    end: { lat: 38.4654, lng: -123.0093, label: "Monte Rio" },
-    sources: [
-      {
-        label: "Rennlist — SF Bay Area Best Driving Roads",
-        url: "https://rennlist.com/forums/west-us-rennlist-region/998154-sf-bay-area-best-driving-roads-for-a-sunday-morning-blast.html",
-      },
+    start: { lat: 38.4060, lng: -122.9484, label: "Occidental" },
+    end: { lat: 38.4654, lng: -123.0064, label: "Monte Rio" },
+    path: [
+      [-122.9484, 38.4060],
+      [-122.9600, 38.4190],
+      [-122.9760, 38.4350],
+      [-122.9900, 38.4500],
+      [-123.0064, 38.4654],
     ],
+    sources: [SOURCE_RENNLIST],
   },
 ];
