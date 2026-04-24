@@ -1,6 +1,5 @@
 import "server-only";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { createClient } from "@supabase/supabase-js";
 import { seedRoads } from "./seed";
 import type { Road, Difficulty, SurfaceQuality, LngLat } from "./types";
 
@@ -60,14 +59,8 @@ export async function getRoads(): Promise<Road[]> {
     return seedRoads;
   }
 
-  const cookieStore = await cookies();
-  const supabase = createServerClient(url, key, {
-    cookies: {
-      getAll() {
-        return cookieStore.getAll();
-      },
-      setAll() {},
-    },
+  const supabase = createClient(url, key, {
+    auth: { persistSession: false },
   });
 
   const { data, error } = await supabase
