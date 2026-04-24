@@ -62,18 +62,36 @@ body > * {
   z-index: 1;
 }
 
-/* MapLibre control restyle for dark theme */
+/* MapLibre control restyle for dark chrome on a light basemap */
 .maplibregl-ctrl-group {
   background: var(--surface) !important;
   border: 1px solid var(--border) !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35) !important;
+  overflow: hidden !important;
 }
 .maplibregl-ctrl-group button {
   filter: invert(0.9) hue-rotate(180deg);
 }
+/* Our custom locate button already ships a light-on-dark SVG, so skip the
+   invert used on the built-in +/- buttons. */
+.maplibregl-ctrl-group button.locate-btn {
+  filter: none;
+  color: var(--text);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 29px;
+  height: 29px;
+}
+.maplibregl-ctrl-group button.locate-btn:hover {
+  background: var(--surface-2);
+  color: var(--accent);
+}
 .maplibregl-ctrl-attrib {
-  background: rgba(20, 20, 20, 0.8) !important;
+  background: rgba(20, 20, 20, 0.75) !important;
   color: var(--text-muted) !important;
+  font-size: 10px !important;
 }
 .maplibregl-ctrl-attrib a {
   color: var(--text-muted) !important;

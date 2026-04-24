@@ -6,6 +6,7 @@ import maplibregl, {
   type Marker,
   type LngLatBoundsLike,
   type GeoJSONSource,
+  type IControl,
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { Road, LatLng } from "@/lib/roads/types";
@@ -17,29 +18,30 @@ type Props = {
   currentLocation: LatLng | null;
   activeSlug: string | null;
   /** Fit the map to the active road's path when it changes. Set by the
-   *  list / modal (true) but not by in-map clicks (false) so the map
-   *  doesn't jump under the user's finger. */
+   *  list / modal but not by in-map clicks. */
   fitToActive: boolean;
   onSelect: (slug: string) => void;
   onOpen?: (slug: string) => void;
+  onRequestGeo: () => void;
 };
 
-// OpenTopoMap: keyless, free, actual topographic tiles (contour lines +
-// SRTM hillshading). Attribution is required.
+// CartoDB Voyager: clean light-grey cartography with subtle terrain hints.
+// Keyless, CORS-enabled, available on @2x for retina.
 const STYLE = {
   version: 8 as const,
   sources: {
     basemap: {
       type: "raster" as const,
       tiles: [
-        "https://a.tile.opentopomap.org/{z}/{x}/{y}.png",
-        "https://b.tile.opentopomap.org/{z}/{x}/{y}.png",
-        "https://c.tile.opentopomap.org/{z}/{x}/{y}.png",
+        "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
+        "https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
+        "https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
+        "https://d.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
       ],
       tileSize: 256,
       attribution:
-        'Map data: © <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> contributors, SRTM | Map style: © <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)',
-      maxzoom: 17,
+        '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>',
+      maxzoom: 19,
     },
   },
   layers: [
@@ -52,7 +54,7 @@ const STYLE = {
 };
 
 const ACCENT = "#fc5200";
-const LINE_CASING = "rgba(10, 10, 10, 0.85)";
+const LINE_CASING = "#0b0b0b";
 
 function routeFeatures(
   roads: Road[],
@@ -100,7 +102,7 @@ function markerClass(state: { done: boolean; active: boolean }): string {
     "road-marker",
     "flex h-8 w-8 items-center justify-center rounded-full border-2",
     "text-[11px] font-semibold tabular-nums cursor-pointer",
-    "shadow-[0_4px_14px_rgba(0,0,0,0.45)] transition-[box-shadow,border-color,background-color,color] duration-150",
+    "shadow-[0_3px_10px_rgba(0,0,0,0.35)] transition-[box-shadow,border-color,background-color,color] duration-150",
     state.done
       ? "bg-[color:var(--accent)] border-white text-white"
       : "bg-white border-[color:var(--accent)] text-[color:var(--accent)]",
@@ -108,6 +110,41 @@ function markerClass(state: { done: boolean; active: boolean }): string {
       ? "z-10 ring-4 ring-[color:var(--accent-ring)]"
       : "",
   ].join(" ");
+}
+
+/** Custom MapLibre control: a "locate me" button that asks for the GPS fix
+ *  and pans the map to it (the pan itself happens in React when
+ *  `currentLocation` updates). */
+class LocateControl implements IControl {
+  private _map: MlMap | null = null;
+  private _container: HTMLDivElement | null = null;
+  private _button: HTMLButtonElement | null = null;
+
+  constructor(private readonly onClick: () => void) {}
+
+  onAdd(map: MlMap): HTMLElement {
+    this._map = map;
+    const container = document.createElement("div");
+    container.className = "maplibregl-ctrl maplibregl-ctrl-group";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.setAttribute("aria-label", "Center on my location");
+    button.title = "Center on my location";
+    button.className = "locate-btn";
+    button.innerHTML =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="3"/><path d="M12 2v3"/><path d="M12 19v3"/><path d="M2 12h3"/><path d="M19 12h3"/></svg>';
+    button.addEventListener("click", this.onClick);
+    container.appendChild(button);
+    this._container = container;
+    this._button = button;
+    return container;
+  }
+
+  onRemove(): void {
+    if (this._button) this._button.removeEventListener("click", this.onClick);
+    this._container?.parentNode?.removeChild(this._container);
+    this._map = null;
+  }
 }
 
 export default function RoadMap({
@@ -119,6 +156,7 @@ export default function RoadMap({
   fitToActive,
   onSelect,
   onOpen,
+  onRequestGeo,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MlMap | null>(null);
@@ -128,18 +166,20 @@ export default function RoadMap({
   const homeMarkerRef = useRef<Marker | null>(null);
   const gpsMarkerRef = useRef<Marker | null>(null);
 
-  const activeSlugRef = useRef<string | null>(activeSlug);
+  const activeSlugRef = useRef<string | null>(null);
   const onSelectRef = useRef(onSelect);
   const onOpenRef = useRef(onOpen);
+  const onRequestGeoRef = useRef(onRequestGeo);
+  const currentLocationRef = useRef<LatLng | null>(null);
   const hasFitRef = useRef(false);
-  // Set to `slug` by in-map click handlers; the fit effect skips a pending
-  // fit when this matches the new activeSlug so taps don't yank the map.
   const skipNextFitForRef = useRef<string | null>(null);
   useLayoutEffect(() => {
     activeSlugRef.current = activeSlug;
     onSelectRef.current = onSelect;
     onOpenRef.current = onOpen;
-  }, [activeSlug, onSelect, onOpen]);
+    onRequestGeoRef.current = onRequestGeo;
+    currentLocationRef.current = currentLocation;
+  }, [activeSlug, onSelect, onOpen, onRequestGeo, currentLocation]);
 
   // Init map once.
   useEffect(() => {
@@ -158,6 +198,18 @@ export default function RoadMap({
       new maplibregl.NavigationControl({ showCompass: false }),
       "top-right",
     );
+    map.addControl(
+      new LocateControl(() => {
+        // If we already have a fix, recenter on it; otherwise request one.
+        const loc = currentLocationRef.current;
+        if (loc) {
+          map.flyTo({ center: [loc.lng, loc.lat], zoom: 12, speed: 1.4 });
+        } else {
+          onRequestGeoRef.current();
+        }
+      }),
+      "top-right",
+    );
 
     const markers = markersRef.current;
     return () => {
@@ -172,6 +224,27 @@ export default function RoadMap({
       hasFitRef.current = false;
     };
   }, []);
+
+  // Fly to the GPS fix the first time one arrives.
+  const gotFirstGpsRef = useRef(false);
+  useEffect(() => {
+    if (!currentLocation) {
+      gotFirstGpsRef.current = false;
+      return;
+    }
+    if (gotFirstGpsRef.current) return;
+    const map = mapRef.current;
+    if (!map) return;
+    gotFirstGpsRef.current = true;
+    const doFly = () =>
+      map.flyTo({
+        center: [currentLocation.lng, currentLocation.lat],
+        zoom: Math.max(map.getZoom(), 10),
+        speed: 1.2,
+      });
+    if (map.isStyleLoaded()) doFly();
+    else map.once("load", doFly);
+  }, [currentLocation]);
 
   // Routes source + layers.
   useEffect(() => {
@@ -197,7 +270,7 @@ export default function RoadMap({
               6, ["case", ["==", ["get", "active"], 1], 5, 3],
               12, ["case", ["==", ["get", "active"], 1], 11, 7],
             ],
-            "line-opacity": 0.85,
+            "line-opacity": 0.9,
           },
           layout: { "line-cap": "round", "line-join": "round" },
         });
@@ -219,7 +292,7 @@ export default function RoadMap({
               "case",
               ["==", ["get", "active"], 1],
               1,
-              0.7,
+              0.75,
             ],
           },
           layout: { "line-cap": "round", "line-join": "round" },
@@ -313,9 +386,7 @@ export default function RoadMap({
     });
   }, [done, activeSlug]);
 
-  // Optional: fit the active road's path into view, but only when the
-  // selection came from outside the map (list / modal). In-map clicks set
-  // skipNextFitForRef so the map stays put.
+  // Fit to the active road's path (only when requested by list/modal).
   useEffect(() => {
     if (!fitToActive) return;
     if (!activeSlug) return;
@@ -348,8 +419,10 @@ export default function RoadMap({
       if (!home) return;
       const el = document.createElement("div");
       el.className =
-        "h-4 w-4 rounded-full bg-[color:var(--accent)] ring-2 ring-white shadow-[0_2px_8px_rgba(0,0,0,0.5)]";
+        "flex h-5 w-5 items-center justify-center rounded-full bg-[color:var(--accent)] text-white ring-2 ring-white shadow-[0_2px_8px_rgba(0,0,0,0.4)]";
       el.title = "Home";
+      el.innerHTML =
+        '<svg viewBox="0 0 20 20" fill="currentColor" style="width:10px;height:10px"><path d="M10.707 2.293a1 1 0 0 0-1.414 0l-7 7A1 1 0 0 0 3 11h1v6a1 1 0 0 0 1 1h3v-4a2 2 0 1 1 4 0v4h3a1 1 0 0 0 1-1v-6h1a1 1 0 0 0 .707-1.707l-7-7Z"/></svg>';
       homeMarkerRef.current = new maplibregl.Marker({ element: el })
         .setLngLat([home.lng, home.lat])
         .addTo(map);
@@ -358,7 +431,7 @@ export default function RoadMap({
     else map.once("load", apply);
   }, [home]);
 
-  // GPS marker.
+  // GPS marker — a sky-blue dot with a pulse ring.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -367,8 +440,11 @@ export default function RoadMap({
       gpsMarkerRef.current = null;
       if (!currentLocation) return;
       const el = document.createElement("div");
-      el.className =
-        "h-3 w-3 rounded-full bg-sky-500 ring-2 ring-white shadow-[0_2px_8px_rgba(0,0,0,0.5)]";
+      el.className = "gps-marker relative";
+      el.innerHTML = `
+        <span class="block h-4 w-4 rounded-full bg-sky-500 ring-2 ring-white shadow-[0_2px_8px_rgba(0,0,0,0.4)]"></span>
+        <span class="pointer-events-none absolute inset-0 rounded-full bg-sky-500/30 animate-ping"></span>
+      `;
       el.title = "Your current location";
       gpsMarkerRef.current = new maplibregl.Marker({ element: el })
         .setLngLat([currentLocation.lng, currentLocation.lat])

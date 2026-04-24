@@ -140,21 +140,20 @@ export default function RoadsApp() {
     <div className="flex h-[100svh] min-h-[100svh] flex-col">
       <header className="relative z-20 flex h-14 shrink-0 items-center justify-between border-b border-[var(--border)] bg-[var(--bg)]/90 px-4 backdrop-blur sm:px-5">
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent-soft)]">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              className="h-4 w-4 text-[color:var(--accent)]"
-            >
-              <path
-                d="M3 20 L9 4 L13 14 L17 8 L21 20"
-                stroke="currentColor"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </div>
+          <ProfileMenu
+            doneCount={doneCount}
+            total={ROADS.length}
+            home={home}
+            onSaveHome={setHome}
+            onRequestGeo={requestGeo}
+            usingGps={!!currentLocation}
+            geoError={geoError}
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+            showDone={showDone}
+            onShowDoneChange={setShowDone}
+            onResetProgress={reset}
+          />
           <div className="leading-tight">
             <div className="text-[13px] font-semibold tracking-tight text-[var(--text)]">
               Driver&rsquo;s Guide
@@ -164,20 +163,9 @@ export default function RoadsApp() {
             </div>
           </div>
         </div>
-        <ProfileMenu
-          doneCount={doneCount}
-          total={ROADS.length}
-          home={home}
-          onSaveHome={setHome}
-          onRequestGeo={requestGeo}
-          usingGps={!!currentLocation}
-          geoError={geoError}
-          sortBy={sortBy}
-          onSortChange={setSortBy}
-          showDone={showDone}
-          onShowDoneChange={setShowDone}
-          onResetProgress={reset}
-        />
+        <div className="text-[11px] tabular-nums text-[var(--text-dim)]">
+          {visibleRoads.length} route{visibleRoads.length === 1 ? "" : "s"}
+        </div>
       </header>
 
       <div className="relative flex min-h-0 flex-1">
@@ -191,6 +179,7 @@ export default function RoadsApp() {
             fitToActive={fitPending}
             onSelect={handleSelectNoFit}
             onOpen={handleOpen}
+            onRequestGeo={requestGeo}
           />
         </main>
 

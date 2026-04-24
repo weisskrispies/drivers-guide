@@ -126,7 +126,7 @@ export default function ProfileMenu({
       </button>
 
       {open && (
-        <div className="absolute right-0 z-40 mt-2 w-80 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.55)]">
+        <div className="absolute left-0 z-40 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.55)]">
           {/* Rank */}
           <section>
             <div className="flex items-baseline justify-between">
