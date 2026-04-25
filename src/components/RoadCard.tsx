@@ -23,10 +23,10 @@ const DIFFICULTY_LABEL: Record<Road["difficulty"], string> = {
 };
 
 const DIFFICULTY_TONE: Record<Road["difficulty"], string> = {
-  easy: "text-emerald-400",
-  moderate: "text-sky-400",
-  spirited: "text-amber-400",
-  expert: "text-red-400",
+  easy: "text-emerald-600 dark:text-emerald-400",
+  moderate: "text-sky-600 dark:text-sky-400",
+  spirited: "text-amber-600 dark:text-amber-400",
+  expert: "text-red-600 dark:text-red-400",
 };
 
 export default function RoadCard({
@@ -45,26 +45,27 @@ export default function RoadCard({
       onClick={onSelect}
       onDoubleClick={onOpen}
       className={[
-        "group relative cursor-pointer overflow-hidden rounded-2xl border bg-[var(--surface)] p-3 transition-all",
+        "group relative cursor-pointer overflow-hidden rounded-2xl border bg-[var(--surface)] transition-colors",
+        "p-4 sm:p-5",
         active
-          ? "border-[color:var(--accent)] shadow-[0_0_0_1px_var(--accent),0_10px_28px_-10px_rgba(252,82,0,0.45)]"
-          : "border-[var(--border)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-2)]",
+          ? "border-[color:var(--accent)] shadow-[0_0_0_1px_var(--accent),var(--shadow-card)]"
+          : "border-[var(--border)] shadow-[var(--shadow-card)] hover:border-[var(--border-strong)]",
         done ? "opacity-75" : "",
       ].join(" ")}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-start gap-3.5">
         <span
           className={[
-            "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums transition-colors",
+            "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold tabular-nums transition-colors",
             active
               ? "bg-[color:var(--accent)] text-white"
-              : "bg-[var(--surface-3)] text-[var(--text-muted)] group-hover:bg-[color:var(--accent)] group-hover:text-white",
+              : "bg-[var(--surface-2)] text-[var(--text-muted)] group-hover:bg-[color:var(--accent)] group-hover:text-white",
           ].join(" ")}
         >
           {index + 1}
         </span>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.14em] text-[var(--text-dim)]">
+          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.16em] text-[var(--text-dim)]">
             <span className="truncate">{road.region}</span>
             {distanceFromOrigin !== null && originLabel && (
               <>
@@ -77,8 +78,10 @@ export default function RoadCard({
           </div>
           <h3
             className={[
-              "mt-0.5 truncate text-[14px] font-semibold tracking-tight text-[var(--text)]",
-              done ? "line-through decoration-[color:var(--accent)] decoration-2" : "",
+              "mt-1 text-[15px] font-semibold leading-snug tracking-tight text-[var(--text)]",
+              done
+                ? "line-through decoration-[color:var(--accent)] decoration-2"
+                : "",
             ].join(" ")}
           >
             {road.name}
@@ -93,7 +96,7 @@ export default function RoadCard({
           aria-pressed={done}
           aria-label={done ? "Mark as not driven" : "Mark as driven"}
           className={[
-            "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 text-sm transition-colors",
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 text-sm transition-colors",
             done
               ? "border-[color:var(--accent)] bg-[color:var(--accent)] text-white hover:bg-[color:var(--accent-hover)]"
               : "border-[var(--border-strong)] bg-transparent text-[var(--text-dim)] hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]",
@@ -103,26 +106,23 @@ export default function RoadCard({
         </button>
       </div>
 
-      <dl className="mt-2.5 flex items-center gap-2 text-[11px]">
-        <Stat label="mi" value={formatMiles(road.distanceMiles)} />
-        <Sep />
-        <Stat label="time" value={formatMinutes(road.estDriveMinutes)} />
-        <Sep />
+      <dl className="mt-4 grid grid-cols-4 gap-2">
+        <Stat label="Miles" value={formatMiles(road.distanceMiles)} />
+        <Stat label="Time" value={formatMinutes(road.estDriveMinutes)} />
         <Stat
-          label="elev"
+          label="Elev"
           value={`+${Math.round(road.elevationGainFt).toLocaleString()}ʹ`}
         />
-        <Sep />
         <Stat
-          label="grade"
+          label="Grade"
           value={DIFFICULTY_LABEL[road.difficulty]}
           tone={DIFFICULTY_TONE[road.difficulty]}
         />
       </dl>
 
       {active && (
-        <div className="mt-2.5 flex items-center justify-between border-t border-[var(--border)] pt-2.5">
-          <p className="line-clamp-1 text-[12px] text-[var(--text-muted)]">
+        <div className="mt-4 flex items-center justify-between gap-3 border-t border-[var(--border)] pt-3.5">
+          <p className="line-clamp-2 text-[12.5px] leading-snug text-[var(--text-muted)]">
             {road.summary}
           </p>
           <button
@@ -131,7 +131,7 @@ export default function RoadCard({
               e.stopPropagation();
               onOpen();
             }}
-            className="ml-3 inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-[color:var(--accent)] hover:text-[color:var(--accent-hover)]"
+            className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[color:var(--accent)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-[color:var(--accent)] transition-colors hover:bg-[var(--accent-soft)]"
           >
             Open
             <svg viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3">
@@ -158,26 +158,18 @@ function Stat({
   tone?: string;
 }) {
   return (
-    <div className="min-w-0 flex items-baseline gap-1">
-      <span
+    <div className="rounded-lg bg-[var(--surface-2)] px-2.5 py-2">
+      <div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[var(--text-dim)]">
+        {label}
+      </div>
+      <div
         className={[
-          "truncate text-[12px] font-semibold tabular-nums",
+          "mt-0.5 truncate text-[13px] font-semibold tabular-nums tracking-tight",
           tone ?? "text-[var(--text)]",
         ].join(" ")}
       >
         {value}
-      </span>
-      <span className="text-[9px] font-medium uppercase tracking-[0.12em] text-[var(--text-dim)]">
-        {label}
-      </span>
+      </div>
     </div>
-  );
-}
-
-function Sep() {
-  return (
-    <span aria-hidden className="text-[var(--text-dim)]/60">
-      ·
-    </span>
   );
 }

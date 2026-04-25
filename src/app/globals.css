@@ -1,20 +1,43 @@
 @import "tailwindcss";
 
+/* Light (day) theme — default. */
 :root {
-  --bg: #0b0b0b;
-  --surface: #141414;
-  --surface-2: #1c1c1c;
-  --surface-3: #262626;
-  --border: #262626;
-  --border-strong: #3a3a3a;
+  --bg: #f7f6f3;
+  --surface: #ffffff;
+  --surface-2: #f4f3ef;
+  --surface-3: #e7e5e0;
+  --border: #e5e3dd;
+  --border-strong: #d0cdc6;
+  --text: #1c1917;
+  --text-muted: #57534e;
+  --text-dim: #8b8782;
+  --accent: #fc5200;
+  --accent-hover: #ff6a1a;
+  --accent-soft: rgba(252, 82, 0, 0.10);
+  --accent-ring: rgba(252, 82, 0, 0.32);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px -12px rgba(15, 15, 15, 0.10);
+  --topo-stroke: #1c1917;
+  --topo-opacity: 0.04;
+}
+
+/* Dark (night) theme. */
+:root.dark {
+  --bg: #0b0b0c;
+  --surface: #161618;
+  --surface-2: #1d1d20;
+  --surface-3: #28282c;
+  --border: #28282c;
+  --border-strong: #3a3a40;
   --text: #f4f4f5;
   --text-muted: #a1a1aa;
   --text-dim: #71717a;
   --accent: #fc5200;
   --accent-hover: #ff6a1a;
-  --accent-soft: rgba(252, 82, 0, 0.14);
-  --accent-ring: rgba(252, 82, 0, 0.35);
-  --success: #22c55e;
+  --accent-soft: rgba(252, 82, 0, 0.16);
+  --accent-ring: rgba(252, 82, 0, 0.40);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 32px -12px rgba(0, 0, 0, 0.5);
+  --topo-stroke: #fc5200;
+  --topo-opacity: 0.05;
 }
 
 @theme inline {
@@ -39,45 +62,52 @@ body {
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
+}
+
+:root.dark {
   color-scheme: dark;
 }
 
-/* Subtle topographic contour pattern, fixed to the viewport so it doesn't
-   scroll with content. Low opacity keeps it textural, not decorative. */
+/* Subtle topographic contour pattern, fixed to the viewport. */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  opacity: 0.06;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='600' viewBox='0 0 600 600'><g fill='none' stroke='%23fc5200' stroke-width='1'><path d='M-50,120 C100,90 220,180 340,150 C460,120 560,190 680,170'/><path d='M-50,180 C120,150 240,240 360,210 C480,180 580,250 700,230'/><path d='M-50,250 C80,220 220,290 340,260 C440,235 560,290 700,280'/><path d='M-50,320 C120,300 240,360 360,330 C480,300 580,370 700,350'/><path d='M-50,390 C110,360 240,440 360,410 C480,380 580,440 700,430'/><path d='M-50,460 C120,430 250,510 370,480 C480,455 580,510 700,500'/><path d='M-50,530 C110,510 240,580 360,550 C480,520 580,580 700,570'/><path d='M80,40 C160,60 240,30 320,60 C400,90 480,50 560,70'/><path d='M120,600 C200,560 280,590 360,560 C440,530 520,570 600,550'/></g></svg>");
+  opacity: var(--topo-opacity);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='600' viewBox='0 0 600 600'><g fill='none' stroke='%23000000' stroke-width='1'><path d='M-50,120 C100,90 220,180 340,150 C460,120 560,190 680,170'/><path d='M-50,180 C120,150 240,240 360,210 C480,180 580,250 700,230'/><path d='M-50,250 C80,220 220,290 340,260 C440,235 560,290 700,280'/><path d='M-50,320 C120,300 240,360 360,330 C480,300 580,370 700,350'/><path d='M-50,390 C110,360 240,440 360,410 C480,380 580,440 700,430'/><path d='M-50,460 C120,430 250,510 370,480 C480,455 580,510 700,500'/><path d='M-50,530 C110,510 240,580 360,550 C480,520 580,580 700,570'/><path d='M80,40 C160,60 240,30 320,60 C400,90 480,50 560,70'/><path d='M120,600 C200,560 280,590 360,560 C440,530 520,570 600,550'/></g></svg>");
   background-size: 600px 600px;
   background-repeat: repeat;
 }
 
-/* Ensure app content sits above the pattern. */
-body > * {
-  position: relative;
-  z-index: 1;
+:root.dark body::before {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='600' viewBox='0 0 600 600'><g fill='none' stroke='%23fc5200' stroke-width='1'><path d='M-50,120 C100,90 220,180 340,150 C460,120 560,190 680,170'/><path d='M-50,180 C120,150 240,240 360,210 C480,180 580,250 700,230'/><path d='M-50,250 C80,220 220,290 340,260 C440,235 560,290 700,280'/><path d='M-50,320 C120,300 240,360 360,330 C480,300 580,370 700,350'/><path d='M-50,390 C110,360 240,440 360,410 C480,380 580,440 700,430'/><path d='M-50,460 C120,430 250,510 370,480 C480,455 580,510 700,500'/><path d='M-50,530 C110,510 240,580 360,550 C480,520 580,580 700,570'/><path d='M80,40 C160,60 240,30 320,60 C400,90 480,50 560,70'/><path d='M120,600 C200,560 280,590 360,560 C440,530 520,570 600,550'/></g></svg>");
 }
 
-/* MapLibre control restyle for dark chrome on a light basemap */
+/* MapLibre control restyle that follows the theme. */
 .maplibregl-ctrl-group {
   background: var(--surface) !important;
   border: 1px solid var(--border) !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35) !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18) !important;
   overflow: hidden !important;
 }
 .maplibregl-ctrl-group button {
-  filter: invert(0.9) hue-rotate(180deg);
+  background: var(--surface) !important;
+  color: var(--text) !important;
 }
-/* Our custom locate button already ships a light-on-dark SVG, so skip the
-   invert used on the built-in +/- buttons. */
-.maplibregl-ctrl-group button.locate-btn {
+.maplibregl-ctrl-group button:hover {
+  background: var(--surface-2) !important;
+}
+:root.dark .maplibregl-ctrl-group button {
+  filter: invert(0.92) hue-rotate(180deg);
+}
+:root.dark .maplibregl-ctrl-group button.locate-btn {
   filter: none;
   color: var(--text);
   background: var(--surface);
+}
+.maplibregl-ctrl-group button.locate-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -89,12 +119,26 @@ body > * {
   color: var(--accent);
 }
 .maplibregl-ctrl-attrib {
-  background: rgba(20, 20, 20, 0.75) !important;
+  background: rgba(255, 255, 255, 0.85) !important;
   color: var(--text-muted) !important;
   font-size: 10px !important;
 }
+:root.dark .maplibregl-ctrl-attrib {
+  background: rgba(20, 20, 20, 0.75) !important;
+}
 .maplibregl-ctrl-attrib a {
   color: var(--text-muted) !important;
+}
+
+/* MapLibre markers must not animate transform — that causes them to lag
+   behind the map during pan/zoom. Lock everything except color. */
+.maplibregl-marker {
+  transition: none !important;
+  will-change: auto !important;
+}
+.maplibregl-marker .road-marker {
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: 120ms;
 }
 
 ::selection {
@@ -102,9 +146,13 @@ body > * {
   color: var(--text);
 }
 
-/* Native form controls adopt dark palette */
 input,
 select,
 textarea {
+  color-scheme: light dark;
+}
+:root.dark input,
+:root.dark select,
+:root.dark textarea {
   color-scheme: dark;
 }

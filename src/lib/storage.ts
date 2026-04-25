@@ -5,8 +5,10 @@ import type { LatLng } from "./roads/types";
 
 const KEY_HOME = "driversguide.home";
 const KEY_DONE = "driversguide.completions";
+const KEY_THEME = "driversguide.theme";
 
 export type HomeLocation = LatLng & { label: string };
+export type Theme = "light" | "dark";
 
 type Listener = () => void;
 const listeners = new Map<string, Set<Listener>>();
@@ -109,4 +111,32 @@ function parseJson<T>(raw: string | null): T | null {
 
 function toSet(arr: string[] | null): Set<string> {
   return new Set(arr ?? []);
+}
+
+function preferredTheme(): Theme {
+  if (typeof window === "undefined") return "light";
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
+}
+
+export function useTheme() {
+  const raw = useLocalStorageString(KEY_THEME);
+  // Stored value wins; otherwise fall back to OS preference.
+  const stored: Theme | null =
+    raw === "light" || raw === "dark" ? (raw as Theme) : null;
+  const theme: Theme = stored ?? preferredTheme();
+
+  const setTheme = useCallback((next: Theme) => {
+    writeRaw(KEY_THEME, next);
+  }, []);
+
+  const toggle = useCallback(() => {
+    const current = readRaw(KEY_THEME);
+    const next: Theme =
+      current === "dark" ? "light" : current === "light" ? "dark" : (preferredTheme() === "dark" ? "light" : "dark");
+    writeRaw(KEY_THEME, next);
+  }, []);
+
+  return { theme, setTheme, toggle };
 }

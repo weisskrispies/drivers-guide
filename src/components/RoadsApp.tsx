@@ -5,10 +5,11 @@ import dynamic from "next/dynamic";
 import { ROADS } from "@/lib/roads/data";
 import type { LatLng } from "@/lib/roads/types";
 import { haversineMiles } from "@/lib/geo";
-import { useCompletions, useHomeLocation } from "@/lib/storage";
+import { useCompletions, useHomeLocation, useTheme } from "@/lib/storage";
 import ProfileMenu from "./ProfileMenu";
 import RoadCard from "./RoadCard";
 import RoadFocused from "./RoadFocused";
+import ThemeToggle from "./ThemeToggle";
 
 // maplibre-gl touches `window` on import; keep the map client-only.
 const RoadMap = dynamic(() => import("./RoadMap"), {
@@ -32,6 +33,7 @@ const DIFFICULTY_ORDER = {
 export default function RoadsApp() {
   const { home, setHome } = useHomeLocation();
   const { done, toggle, reset } = useCompletions();
+  const { theme } = useTheme();
 
   const [currentLocation, setCurrentLocation] = useState<LatLng | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
@@ -40,8 +42,6 @@ export default function RoadsApp() {
   const [showDone, setShowDone] = useState(true);
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
   const [focusedSlug, setFocusedSlug] = useState<string | null>(null);
-  // Toggled true whenever selection originates from the list / modal so the
-  // map fits to the chosen road; reset to false after the fit runs once.
   const [fitPending, setFitPending] = useState(false);
 
   const origin: { point: LatLng; label: string } | null = useMemo(() => {
@@ -90,13 +90,11 @@ export default function RoadsApp() {
     return visibleRoads[0]?.road.slug ?? null;
   }, [activeSlug, visibleRoads]);
 
-  // From list/modal: should fit the map to the road.
   const handleSelectAndFit = useCallback((slug: string) => {
     setActiveSlug(slug);
     setFitPending(true);
   }, []);
 
-  // From map: user already sees the road, don't re-pan under their finger.
   const handleSelectNoFit = useCallback((slug: string) => {
     setActiveSlug(slug);
     setFitPending(false);
@@ -138,37 +136,58 @@ export default function RoadsApp() {
 
   return (
     <div className="flex h-[100svh] min-h-[100svh] flex-col">
-      <header className="relative z-20 flex h-14 shrink-0 items-center justify-between border-b border-[var(--border)] bg-[var(--bg)]/90 px-4 backdrop-blur sm:px-5">
-        <div className="flex items-center gap-3">
-          <ProfileMenu
-            doneCount={doneCount}
-            total={ROADS.length}
-            home={home}
-            onSaveHome={setHome}
-            onRequestGeo={requestGeo}
-            usingGps={!!currentLocation}
-            geoError={geoError}
-            sortBy={sortBy}
-            onSortChange={setSortBy}
-            showDone={showDone}
-            onShowDoneChange={setShowDone}
-            onResetProgress={reset}
-          />
-          <div className="leading-tight">
-            <div className="text-[13px] font-semibold tracking-tight text-[var(--text)]">
-              Driver&rsquo;s Guide
+      <header className="relative z-20 shrink-0 border-b border-[var(--border)] bg-[var(--bg)]/85 backdrop-blur">
+        <div className="mx-auto flex h-16 w-full max-w-[1600px] items-center justify-between px-4 sm:px-6 lg:px-8">
+          {/* Brand */}
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--accent-soft)]">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                className="h-4 w-4 text-[color:var(--accent)]"
+              >
+                <path
+                  d="M3 20 L9 4 L13 14 L17 8 L21 20"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
             </div>
-            <div className="hidden text-[10px] uppercase tracking-[0.16em] text-[var(--text-dim)] sm:block">
-              Bay Area drives
+            <div className="leading-tight">
+              <div className="text-[14px] font-semibold tracking-tight text-[var(--text)]">
+                Driver&rsquo;s Guide
+              </div>
+              <div className="hidden text-[10px] uppercase tracking-[0.18em] text-[var(--text-dim)] sm:block">
+                Bay Area drives
+              </div>
             </div>
           </div>
-        </div>
-        <div className="text-[11px] tabular-nums text-[var(--text-dim)]">
-          {visibleRoads.length} route{visibleRoads.length === 1 ? "" : "s"}
+
+          {/* Right: theme toggle + profile */}
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <ProfileMenu
+              doneCount={doneCount}
+              total={ROADS.length}
+              home={home}
+              onSaveHome={setHome}
+              onRequestGeo={requestGeo}
+              usingGps={!!currentLocation}
+              geoError={geoError}
+              sortBy={sortBy}
+              onSortChange={setSortBy}
+              showDone={showDone}
+              onShowDoneChange={setShowDone}
+              onResetProgress={reset}
+            />
+          </div>
         </div>
       </header>
 
-      <div className="relative flex min-h-0 flex-1">
+      {/* Mobile: full-bleed map + bottom sheet card */}
+      <div className="relative flex min-h-0 flex-1 md:hidden">
         <main className="min-h-0 flex-1">
           <RoadMap
             roads={visibleRoads.map((r) => r.road)}
@@ -177,50 +196,13 @@ export default function RoadsApp() {
             currentLocation={currentLocation}
             activeSlug={effectiveActiveSlug}
             fitToActive={fitPending}
+            theme={theme}
             onSelect={handleSelectNoFit}
             onOpen={handleOpen}
             onRequestGeo={requestGeo}
           />
         </main>
-
-        <aside className="hidden min-h-0 w-[380px] shrink-0 flex-col border-l border-[var(--border)] bg-[var(--surface)]/70 backdrop-blur md:flex">
-          <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
-            <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
-              {visibleRoads.length} road{visibleRoads.length === 1 ? "" : "s"}
-            </h2>
-            {origin && (
-              <span className="text-[11px] text-[var(--text-dim)]">
-                from{" "}
-                <span className="text-[var(--text-muted)]">{origin.label}</span>
-              </span>
-            )}
-          </div>
-          <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
-            {visibleRoads.length === 0 && (
-              <li className="rounded-xl border border-dashed border-[var(--border)] p-6 text-center text-sm text-[var(--text-muted)]">
-                You&rsquo;ve driven them all. Go submit new ones.
-              </li>
-            )}
-            {visibleRoads.map(({ road, distance }, index) => (
-              <li key={road.slug}>
-                <RoadCard
-                  road={road}
-                  index={index}
-                  distanceFromOrigin={distance}
-                  originLabel={origin?.label ?? null}
-                  done={done.has(road.slug)}
-                  active={effectiveActiveSlug === road.slug}
-                  onToggleDone={() => toggle(road.slug)}
-                  onSelect={() => handleSelectAndFit(road.slug)}
-                  onOpen={() => handleOpen(road.slug)}
-                />
-              </li>
-            ))}
-          </ul>
-        </aside>
-
-        {/* Mobile: bottom sheet with the active road card */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 p-3 md:hidden">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 p-3">
           {(() => {
             const active = visibleRoads.find(
               (r) => r.road.slug === effectiveActiveSlug,
@@ -243,6 +225,64 @@ export default function RoadsApp() {
               </div>
             );
           })()}
+        </div>
+      </div>
+
+      {/* Tablet/desktop: spacious padded layout, rounded map, generous list */}
+      <div className="hidden min-h-0 flex-1 md:block">
+        <div className="mx-auto flex h-full min-h-0 w-full max-w-[1600px] gap-6 px-4 py-4 sm:px-6 sm:py-5 lg:gap-8 lg:px-8 lg:py-6">
+          <main className="relative min-h-0 flex-1 overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)]">
+            <RoadMap
+              roads={visibleRoads.map((r) => r.road)}
+              done={done}
+              home={home}
+              currentLocation={currentLocation}
+              activeSlug={effectiveActiveSlug}
+              fitToActive={fitPending}
+              theme={theme}
+              onSelect={handleSelectNoFit}
+              onOpen={handleOpen}
+              onRequestGeo={requestGeo}
+            />
+          </main>
+
+          <aside className="flex min-h-0 w-[400px] shrink-0 flex-col lg:w-[440px]">
+            <div className="mb-3 flex items-baseline justify-between px-1">
+              <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
+                {visibleRoads.length} route{visibleRoads.length === 1 ? "" : "s"}
+              </h2>
+              {origin && (
+                <span className="text-[11px] text-[var(--text-dim)]">
+                  from{" "}
+                  <span className="text-[var(--text-muted)]">
+                    {origin.label}
+                  </span>
+                </span>
+              )}
+            </div>
+            <ul className="min-h-0 flex-1 space-y-3 overflow-y-auto pb-6 pr-1">
+              {visibleRoads.length === 0 && (
+                <li className="rounded-2xl border border-dashed border-[var(--border)] p-8 text-center text-sm text-[var(--text-muted)]">
+                  You&rsquo;ve driven them all. Go submit new ones.
+                </li>
+              )}
+              {visibleRoads.map(({ road, distance }, index) => (
+                <li key={road.slug}>
+                  <RoadCard
+                    road={road}
+                    index={index}
+                    distanceFromOrigin={distance}
+                    originLabel={origin?.label ?? null}
+                    done={done.has(road.slug)}
+                    active={effectiveActiveSlug === road.slug}
+                    onToggleDone={() => toggle(road.slug)}
+                    onSelect={() => handleSelectAndFit(road.slug)}
+                    onOpen={() => handleOpen(road.slug)}
+                  />
+                </li>
+              ))}
+            </ul>
+          </aside>
         </div>
       </div>
 

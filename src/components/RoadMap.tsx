@@ -10,6 +10,7 @@ import maplibregl, {
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { Road, LatLng } from "@/lib/roads/types";
+import type { Theme } from "@/lib/storage";
 
 type Props = {
   roads: Road[];
@@ -17,44 +18,44 @@ type Props = {
   home: LatLng | null;
   currentLocation: LatLng | null;
   activeSlug: string | null;
-  /** Fit the map to the active road's path when it changes. Set by the
-   *  list / modal but not by in-map clicks. */
   fitToActive: boolean;
+  theme: Theme;
   onSelect: (slug: string) => void;
   onOpen?: (slug: string) => void;
   onRequestGeo: () => void;
 };
 
-// CartoDB Voyager: clean light-grey cartography with subtle terrain hints.
-// Keyless, CORS-enabled, available on @2x for retina.
-const STYLE = {
-  version: 8 as const,
-  sources: {
-    basemap: {
-      type: "raster" as const,
-      tiles: [
-        "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
-        "https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
-        "https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
-        "https://d.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
-      ],
-      tileSize: 256,
-      attribution:
-        '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>',
-      maxzoom: 19,
-    },
-  },
-  layers: [
-    {
-      id: "basemap",
-      type: "raster" as const,
-      source: "basemap",
-    },
-  ],
-};
-
 const ACCENT = "#fc5200";
-const LINE_CASING = "#0b0b0b";
+
+function buildStyle(theme: Theme) {
+  const isDark = theme === "dark";
+  const base = isDark ? "dark_all" : "rastertiles/voyager";
+  return {
+    version: 8 as const,
+    sources: {
+      basemap: {
+        type: "raster" as const,
+        tiles: [
+          `https://a.basemaps.cartocdn.com/${base}/{z}/{x}/{y}@2x.png`,
+          `https://b.basemaps.cartocdn.com/${base}/{z}/{x}/{y}@2x.png`,
+          `https://c.basemaps.cartocdn.com/${base}/{z}/{x}/{y}@2x.png`,
+          `https://d.basemaps.cartocdn.com/${base}/{z}/{x}/{y}@2x.png`,
+        ],
+        tileSize: 256,
+        attribution:
+          '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>',
+        maxzoom: 19,
+      },
+    },
+    layers: [
+      { id: "basemap", type: "raster" as const, source: "basemap" },
+    ],
+  };
+}
+
+function lineCasing(theme: Theme) {
+  return theme === "dark" ? "#000000" : "#ffffff";
+}
 
 function routeFeatures(
   roads: Road[],
@@ -102,7 +103,7 @@ function markerClass(state: { done: boolean; active: boolean }): string {
     "road-marker",
     "flex h-8 w-8 items-center justify-center rounded-full border-2",
     "text-[11px] font-semibold tabular-nums cursor-pointer",
-    "shadow-[0_3px_10px_rgba(0,0,0,0.35)] transition-[box-shadow,border-color,background-color,color] duration-150",
+    "shadow-[0_3px_10px_rgba(0,0,0,0.35)]",
     state.done
       ? "bg-[color:var(--accent)] border-white text-white"
       : "bg-white border-[color:var(--accent)] text-[color:var(--accent)]",
@@ -112,18 +113,11 @@ function markerClass(state: { done: boolean; active: boolean }): string {
   ].join(" ");
 }
 
-/** Custom MapLibre control: a "locate me" button that asks for the GPS fix
- *  and pans the map to it (the pan itself happens in React when
- *  `currentLocation` updates). */
 class LocateControl implements IControl {
-  private _map: MlMap | null = null;
   private _container: HTMLDivElement | null = null;
   private _button: HTMLButtonElement | null = null;
-
   constructor(private readonly onClick: () => void) {}
-
-  onAdd(map: MlMap): HTMLElement {
-    this._map = map;
+  onAdd(): HTMLElement {
     const container = document.createElement("div");
     container.className = "maplibregl-ctrl maplibregl-ctrl-group";
     const button = document.createElement("button");
@@ -139,11 +133,9 @@ class LocateControl implements IControl {
     this._button = button;
     return container;
   }
-
   onRemove(): void {
     if (this._button) this._button.removeEventListener("click", this.onClick);
     this._container?.parentNode?.removeChild(this._container);
-    this._map = null;
   }
 }
 
@@ -154,6 +146,7 @@ export default function RoadMap({
   currentLocation,
   activeSlug,
   fitToActive,
+  theme,
   onSelect,
   onOpen,
   onRequestGeo,
@@ -171,6 +164,7 @@ export default function RoadMap({
   const onOpenRef = useRef(onOpen);
   const onRequestGeoRef = useRef(onRequestGeo);
   const currentLocationRef = useRef<LatLng | null>(null);
+  const themeRef = useRef<Theme>(theme);
   const hasFitRef = useRef(false);
   const skipNextFitForRef = useRef<string | null>(null);
   useLayoutEffect(() => {
@@ -179,7 +173,8 @@ export default function RoadMap({
     onOpenRef.current = onOpen;
     onRequestGeoRef.current = onRequestGeo;
     currentLocationRef.current = currentLocation;
-  }, [activeSlug, onSelect, onOpen, onRequestGeo, currentLocation]);
+    themeRef.current = theme;
+  }, [activeSlug, onSelect, onOpen, onRequestGeo, currentLocation, theme]);
 
   // Init map once.
   useEffect(() => {
@@ -187,7 +182,7 @@ export default function RoadMap({
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: STYLE,
+      style: buildStyle(themeRef.current),
       center: [-122.25, 37.6],
       zoom: 8.2,
       attributionControl: { compact: true },
@@ -200,7 +195,6 @@ export default function RoadMap({
     );
     map.addControl(
       new LocateControl(() => {
-        // If we already have a fix, recenter on it; otherwise request one.
         const loc = currentLocationRef.current;
         if (loc) {
           map.flyTo({ center: [loc.lng, loc.lat], zoom: 12, speed: 1.4 });
@@ -225,7 +219,34 @@ export default function RoadMap({
     };
   }, []);
 
-  // Fly to the GPS fix the first time one arrives.
+  // Swap basemap when the theme changes — re-add our layers afterwards.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    map.setStyle(buildStyle(theme));
+    // Re-add routes once the new style is loaded; markers remain in place.
+    const apply = () => {
+      if (!map.getSource("routes")) {
+        addRoutesLayers(map, theme, {
+          onSelect: (slug) => onSelectRef.current(slug),
+          onOpen: (slug) => onOpenRef.current?.(slug),
+          getActiveSlug: () => activeSlugRef.current,
+          markSkipFit: (slug) => {
+            skipNextFitForRef.current = slug;
+          },
+        });
+      }
+      const src = map.getSource("routes") as GeoJSONSource | undefined;
+      if (src) src.setData(routeFeatures(roads, activeSlugRef.current, done));
+      // Make sure layer paint reflects the theme casing color.
+      if (map.getLayer("routes-casing")) {
+        map.setPaintProperty("routes-casing", "line-color", lineCasing(theme));
+      }
+    };
+    map.once("styledata", apply);
+  }, [theme, roads, done]);
+
+  // Fly to first GPS fix.
   const gotFirstGpsRef = useRef(false);
   useEffect(() => {
     if (!currentLocation) {
@@ -252,76 +273,26 @@ export default function RoadMap({
     if (!map) return;
 
     const ensure = () => {
-      const data = routeFeatures(roads, activeSlugRef.current, done);
-
       if (!map.getSource("routes")) {
-        map.addSource("routes", { type: "geojson", data });
-
-        map.addLayer({
-          id: "routes-casing",
-          type: "line",
-          source: "routes",
-          paint: {
-            "line-color": LINE_CASING,
-            "line-width": [
-              "interpolate",
-              ["linear"],
-              ["zoom"],
-              6, ["case", ["==", ["get", "active"], 1], 5, 3],
-              12, ["case", ["==", ["get", "active"], 1], 11, 7],
-            ],
-            "line-opacity": 0.9,
+        addRoutesLayers(map, themeRef.current, {
+          onSelect: (slug) => onSelectRef.current(slug),
+          onOpen: (slug) => onOpenRef.current?.(slug),
+          getActiveSlug: () => activeSlugRef.current,
+          markSkipFit: (slug) => {
+            skipNextFitForRef.current = slug;
           },
-          layout: { "line-cap": "round", "line-join": "round" },
         });
-
-        map.addLayer({
-          id: "routes-line",
-          type: "line",
-          source: "routes",
-          paint: {
-            "line-color": ACCENT,
-            "line-width": [
-              "interpolate",
-              ["linear"],
-              ["zoom"],
-              6, ["case", ["==", ["get", "active"], 1], 3, 1.5],
-              12, ["case", ["==", ["get", "active"], 1], 7, 3.5],
-            ],
-            "line-opacity": [
-              "case",
-              ["==", ["get", "active"], 1],
-              1,
-              0.75,
-            ],
-          },
-          layout: { "line-cap": "round", "line-join": "round" },
-        });
-
-        map.on("click", "routes-line", (e) => {
-          const slug = e.features?.[0]?.properties?.slug;
-          if (typeof slug !== "string") return;
-          skipNextFitForRef.current = slug;
-          if (slug === activeSlugRef.current) onOpenRef.current?.(slug);
-          else onSelectRef.current(slug);
-        });
-        map.on("mouseenter", "routes-line", () => {
-          map.getCanvas().style.cursor = "pointer";
-        });
-        map.on("mouseleave", "routes-line", () => {
-          map.getCanvas().style.cursor = "";
-        });
-      } else {
-        const src = map.getSource("routes") as GeoJSONSource;
-        src.setData(data);
       }
+      const src = map.getSource("routes") as GeoJSONSource | undefined;
+      if (src) src.setData(routeFeatures(roads, activeSlug, done));
     };
 
     if (map.isStyleLoaded()) ensure();
     else map.once("load", ensure);
   }, [roads, done, activeSlug]);
 
-  // Reconcile numbered start markers.
+  // Marker reconciliation — keyed by slug, never recreated unless slug set
+  // changes.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -376,7 +347,7 @@ export default function RoadMap({
     else map.once("load", mount);
   }, [roads]);
 
-  // Restyle markers in place when selection / done changes.
+  // Restyle markers in place.
   useEffect(() => {
     markersRef.current.forEach((entry, slug) => {
       entry.el.className = markerClass({
@@ -386,7 +357,7 @@ export default function RoadMap({
     });
   }, [done, activeSlug]);
 
-  // Fit to the active road's path (only when requested by list/modal).
+  // Fit to active path on list/modal selection.
   useEffect(() => {
     if (!fitToActive) return;
     if (!activeSlug) return;
@@ -431,7 +402,7 @@ export default function RoadMap({
     else map.once("load", apply);
   }, [home]);
 
-  // GPS marker — a sky-blue dot with a pulse ring.
+  // GPS marker — pulse ring.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -455,4 +426,73 @@ export default function RoadMap({
   }, [currentLocation]);
 
   return <div ref={containerRef} className="h-full w-full" />;
+}
+
+type RouteHandlers = {
+  onSelect: (slug: string) => void;
+  onOpen?: (slug: string) => void;
+  getActiveSlug: () => string | null;
+  markSkipFit: (slug: string) => void;
+};
+
+function addRoutesLayers(map: MlMap, theme: Theme, handlers: RouteHandlers) {
+  map.addSource("routes", {
+    type: "geojson",
+    data: { type: "FeatureCollection", features: [] },
+  });
+
+  map.addLayer({
+    id: "routes-casing",
+    type: "line",
+    source: "routes",
+    paint: {
+      "line-color": lineCasing(theme),
+      "line-width": [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        6, ["case", ["==", ["get", "active"], 1], 5, 3],
+        12, ["case", ["==", ["get", "active"], 1], 11, 7],
+      ],
+      "line-opacity": 0.85,
+    },
+    layout: { "line-cap": "round", "line-join": "round" },
+  });
+
+  map.addLayer({
+    id: "routes-line",
+    type: "line",
+    source: "routes",
+    paint: {
+      "line-color": ACCENT,
+      "line-width": [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        6, ["case", ["==", ["get", "active"], 1], 3, 1.5],
+        12, ["case", ["==", ["get", "active"], 1], 7, 3.5],
+      ],
+      "line-opacity": [
+        "case",
+        ["==", ["get", "active"], 1],
+        1,
+        0.75,
+      ],
+    },
+    layout: { "line-cap": "round", "line-join": "round" },
+  });
+
+  map.on("click", "routes-line", (e) => {
+    const slug = e.features?.[0]?.properties?.slug;
+    if (typeof slug !== "string") return;
+    handlers.markSkipFit(slug);
+    if (slug === handlers.getActiveSlug()) handlers.onOpen?.(slug);
+    else handlers.onSelect(slug);
+  });
+  map.on("mouseenter", "routes-line", () => {
+    map.getCanvas().style.cursor = "pointer";
+  });
+  map.on("mouseleave", "routes-line", () => {
+    map.getCanvas().style.cursor = "";
+  });
 }
