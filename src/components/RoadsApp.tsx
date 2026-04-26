@@ -10,6 +10,7 @@ import ProfileMenu from "./ProfileMenu";
 import RoadCard from "./RoadCard";
 import RoadFocused from "./RoadFocused";
 import ThemeToggle from "./ThemeToggle";
+import type { MapHandle } from "./RoadMap";
 
 // maplibre-gl touches `window` on import; keep the map client-only.
 const RoadMap = dynamic(() => import("./RoadMap"), {
@@ -42,11 +43,9 @@ export default function RoadsApp() {
   const [showDone, setShowDone] = useState(true);
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
   const [focusedSlug, setFocusedSlug] = useState<string | null>(null);
-  // Counters bumped to ask the map for a one-shot fit / recenter. Using
-  // tokens (instead of a boolean flag) means repeated requests for the
-  // same target — even on the same activeSlug — still trigger the action.
-  const [fitToken, setFitToken] = useState(0);
-  const [recenterToken, setRecenterToken] = useState(0);
+  // Imperative handle into the map. Click handlers call mapRef.current
+  // directly, no state propagation through useEffect.
+  const mapRef = useRef<MapHandle | null>(null);
 
   const origin: { point: LatLng; label: string } | null = useMemo(() => {
     if (currentLocation) return { point: currentLocation, label: "you" };
@@ -94,11 +93,13 @@ export default function RoadsApp() {
     return visibleRoads[0]?.road.slug ?? null;
   }, [activeSlug, visibleRoads]);
 
-  // List/modal selection: selecting bumps the fit token so the map
-  // re-frames to show the route (and the user's location, if known).
+  // List/modal selection: select the road and immediately ask the map
+  // to fit to it. Imperative — no state-propagation indirection.
   const handleSelectAndFit = useCallback((slug: string) => {
     setActiveSlug(slug);
-    setFitToken((t) => t + 1);
+    // Run after this render commits, so the map has the new active slug
+    // (synced via ref in RoadMap's layoutEffect) when fitToActive reads it.
+    queueMicrotask(() => mapRef.current?.fitToActive());
   }, []);
 
   // Map-originated selection: don't move the map, the user already sees
@@ -109,17 +110,17 @@ export default function RoadsApp() {
 
   const handleOpen = useCallback((slug: string) => {
     setActiveSlug(slug);
-    setFitToken((t) => t + 1);
+    queueMicrotask(() => mapRef.current?.fitToActive());
     setFocusedSlug(slug);
   }, []);
 
   const handleCloseFocus = useCallback(() => setFocusedSlug(null), []);
 
-  // Request a recenter on the user's GPS. Both the on-map locate button
-  // and the popover "Use GPS" button call this; the map watches
-  // recenterToken and reacts identically either way.
+  // Recenter request: fire the imperative recenter (instant fly to
+  // cached fix + flag a re-fly when the fresh fix arrives), then start
+  // the geolocation request.
   const requestGeo = useCallback(() => {
-    setRecenterToken((t) => t + 1);
+    mapRef.current?.recenter();
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       setGeoError("Geolocation not available in this browser.");
       return;
@@ -219,8 +220,7 @@ export default function RoadsApp() {
             home={home}
             currentLocation={currentLocation}
             activeSlug={effectiveActiveSlug}
-            fitToken={fitToken}
-            recenterToken={recenterToken}
+            handleRef={mapRef}
             theme={theme}
             onSelect={handleSelectNoFit}
             onOpen={handleOpen}

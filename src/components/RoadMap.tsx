@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { type RefObject, useEffect, useLayoutEffect, useRef } from "react";
 import maplibregl, {
   type Map as MlMap,
   type Marker,
@@ -12,18 +12,21 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import type { Road, LatLng } from "@/lib/roads/types";
 import type { Theme } from "@/lib/storage";
 
+/** Imperative handle exposed to RoadsApp so list clicks can fly the map
+ *  directly, no useEffect / state propagation in the loop. */
+export type MapHandle = {
+  fitToActive: () => void;
+  recenter: () => void;
+};
+
 type Props = {
   roads: Road[];
   done: Set<string>;
   home: LatLng | null;
   currentLocation: LatLng | null;
   activeSlug: string | null;
-  /** Increments every time the parent wants the map to fit to the active
-   *  route (list / modal click). Map clicks don't bump it. */
-  fitToken: number;
-  /** Increments every time the user explicitly asks to recenter on their
-   *  GPS location (locate button on the map, "Use GPS" in the popover). */
-  recenterToken: number;
+  /** Imperative handle the parent assigns into. */
+  handleRef?: RefObject<MapHandle | null>;
   theme: Theme;
   onSelect: (slug: string) => void;
   onOpen?: (slug: string) => void;
@@ -159,8 +162,7 @@ export default function RoadMap({
   home,
   currentLocation,
   activeSlug,
-  fitToken,
-  recenterToken,
+  handleRef,
   theme,
   onSelect,
   onOpen,
@@ -216,8 +218,8 @@ export default function RoadMap({
       new LocateControl(() => {
         // Delegate to the parent — same path the popover GPS button takes,
         // so behaviour is identical regardless of where the user triggers
-        // a recenter from. Parent bumps recenterToken which our recenter
-        // effect picks up and translates into a flyTo.
+        // a recenter from. The parent calls handle.recenter() and kicks
+        // off the geolocation request.
         onRequestGeoRef.current();
       }),
       "top-right",
@@ -376,59 +378,53 @@ export default function RoadMap({
     });
   }, [done, activeSlug]);
 
-  // Fit to active path. Triggered by the parent bumping `fitToken` (list
-  // / modal click). We deliberately do NOT depend on activeSlug or the
-  // map-click selection mechanism — only an explicit list-side intent
-  // moves the map.
-  //   - Generous padding + capped maxZoom so the route occupies ~half
-  //     the canvas, leaving context around it.
-  //   - When we already have a GPS fix, include the user's location in
-  //     the bounds so the fit shows the route AND the user together.
+  // Expose imperative handle to the parent. Click handlers in RoadsApp
+  // call these directly — no state-propagation, no useEffect dep
+  // surprises. Each call reads the freshest values via refs.
   useEffect(() => {
-    if (fitToken === 0) return;
-    const slug = activeSlugRef.current;
-    if (!slug) return;
-    const map = mapRef.current;
-    if (!map) return;
-    const road = roadsRef.current.find((r) => r.slug === slug);
-    if (!road || road.path.length === 0) return;
-    const loc = currentLocationRef.current;
-    const bounds = pathBoundsWithPoint(road.path, loc);
-    const doFit = () => {
-      map.fitBounds(bounds, {
-        // When we're including the user's GPS, no zoom cap — let the fit
-        // naturally pull back enough to show route + user together. When
-        // the route is alone, cap at z=12 so very short roads don't slam
-        // to street level.
-        padding: loc
-          ? { top: 100, right: 100, bottom: 100, left: 100 }
-          : { top: 80, right: 80, bottom: 80, left: 80 },
-        duration: 900,
-        maxZoom: loc ? undefined : 12,
-      });
+    if (!handleRef) return;
+    const handle: MapHandle = {
+      fitToActive: () => {
+        const slug = activeSlugRef.current;
+        if (!slug) return;
+        const map = mapRef.current;
+        if (!map) return;
+        const road = roadsRef.current.find((r) => r.slug === slug);
+        if (!road || road.path.length === 0) return;
+        const loc = currentLocationRef.current;
+        const bounds = pathBoundsWithPoint(road.path, loc);
+        const doFit = () => {
+          map.fitBounds(bounds, {
+            // With a GPS fix in the bounds, no maxZoom cap — let
+            // fitBounds naturally pull back to frame route + user.
+            // Solo route gets capped at z=12 so short roads don't slam
+            // to street level.
+            padding: loc
+              ? { top: 100, right: 100, bottom: 100, left: 100 }
+              : { top: 80, right: 80, bottom: 80, left: 80 },
+            duration: 900,
+            maxZoom: loc ? undefined : 12,
+          });
+        };
+        if (map.isStyleLoaded()) doFit();
+        else map.once("load", doFit);
+      },
+      recenter: () => {
+        const map = mapRef.current;
+        if (!map) return;
+        const loc = currentLocationRef.current;
+        if (loc) {
+          map.flyTo({ center: [loc.lng, loc.lat], zoom: 13, speed: 1.4 });
+        }
+        // Flag so the auto-fly effect refits when the fresh GPS arrives.
+        pendingRecenterRef.current = true;
+      },
     };
-    if (map.isStyleLoaded()) doFit();
-    else map.once("load", doFit);
-  }, [fitToken]);
-
-  // Recenter on user's location. Triggered by the parent bumping
-  // `recenterToken` (locate button on the map OR "Use GPS" in the
-  // popover). The parent has already kicked off the geolocation request
-  // by the time this fires, so we just (a) fly to a cached fix for
-  // instant feedback and (b) flag pendingRecenter so the auto-fly effect
-  // re-flies when the fresh fix arrives. We must NOT call the geo
-  // request again here — that bumps recenterToken and produces an
-  // infinite render loop.
-  useEffect(() => {
-    if (recenterToken === 0) return;
-    const map = mapRef.current;
-    if (!map) return;
-    const loc = currentLocationRef.current;
-    if (loc) {
-      map.flyTo({ center: [loc.lng, loc.lat], zoom: 13, speed: 1.4 });
-    }
-    pendingRecenterRef.current = true;
-  }, [recenterToken]);
+    handleRef.current = handle;
+    return () => {
+      if (handleRef.current === handle) handleRef.current = null;
+    };
+  }, [handleRef]);
 
   // Home marker.
   useEffect(() => {
