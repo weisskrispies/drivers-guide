@@ -134,11 +134,24 @@ body::before {
    behind the map during pan/zoom. Lock everything except color. */
 .maplibregl-marker {
   transition: none !important;
-  will-change: auto !important;
 }
-.maplibregl-marker .road-marker {
+.road-marker {
+  background-color: #ffffff;
+  border-color: var(--accent);
+  color: var(--accent);
   transition-property: background-color, border-color, color, box-shadow;
   transition-duration: 120ms;
+}
+.road-marker[data-done="true"] {
+  background-color: var(--accent);
+  border-color: #ffffff;
+  color: #ffffff;
+}
+.road-marker[data-active="true"] {
+  z-index: 10;
+  box-shadow:
+    0 0 0 4px var(--accent-ring),
+    0 3px 10px rgba(0, 0, 0, 0.35);
 }
 
 ::selection {

@@ -98,19 +98,20 @@ function allBounds(roads: Road[]): LngLatBoundsLike | null {
   ];
 }
 
-function markerClass(state: { done: boolean; active: boolean }): string {
-  return [
-    "road-marker",
-    "flex h-8 w-8 items-center justify-center rounded-full border-2",
-    "text-[11px] font-semibold tabular-nums cursor-pointer",
-    "shadow-[0_3px_10px_rgba(0,0,0,0.35)]",
-    state.done
-      ? "bg-[color:var(--accent)] border-white text-white"
-      : "bg-white border-[color:var(--accent)] text-[color:var(--accent)]",
-    state.active
-      ? "z-10 ring-4 ring-[color:var(--accent-ring)]"
-      : "",
-  ].join(" ");
+// Static class string applied once when the marker DOM is created. State
+// changes (active / done) are driven by data-* attributes + CSS rules in
+// globals.css so we don't have to overwrite element.className later — that
+// would wipe the maplibregl-marker classes and cause the marker to lose
+// its absolute positioning.
+const MARKER_BASE_CLASS =
+  "road-marker flex h-8 w-8 items-center justify-center rounded-full border-2 text-[11px] font-semibold tabular-nums cursor-pointer shadow-[0_3px_10px_rgba(0,0,0,0.35)]";
+
+function applyMarkerState(
+  el: HTMLElement,
+  state: { done: boolean; active: boolean },
+) {
+  el.dataset.done = state.done ? "true" : "false";
+  el.dataset.active = state.active ? "true" : "false";
 }
 
 class LocateControl implements IControl {
@@ -314,7 +315,10 @@ export default function RoadMap({
         el.type = "button";
         el.setAttribute("aria-label", road.name);
         el.textContent = String(index + 1);
-        el.className = markerClass({ done: false, active: false });
+        el.className = MARKER_BASE_CLASS;
+        // Initial state; the dedicated restyle effect picks up `done` and
+        // active changes immediately after mount.
+        applyMarkerState(el, { done: false, active: false });
         el.addEventListener("click", (ev) => {
           ev.stopPropagation();
           const slug = road.slug;
@@ -347,10 +351,11 @@ export default function RoadMap({
     else map.once("load", mount);
   }, [roads]);
 
-  // Restyle markers in place.
+  // Restyle markers in place using data-* attributes so we don't clobber
+  // the maplibregl-marker class on the element.
   useEffect(() => {
     markersRef.current.forEach((entry, slug) => {
-      entry.el.className = markerClass({
+      applyMarkerState(entry.el, {
         done: done.has(slug),
         active: slug === activeSlug,
       });
