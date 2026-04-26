@@ -180,6 +180,7 @@ export default function RoadMap({
   const onRequestGeoRef = useRef(onRequestGeo);
   const currentLocationRef = useRef<LatLng | null>(null);
   const themeRef = useRef<Theme>(theme);
+  const roadsRef = useRef<Road[]>(roads);
   const hasFitRef = useRef(false);
   // True when a recenter has been requested but the GPS fix hasn't arrived
   // yet — the auto-fly effect consumes it on the next location update.
@@ -191,7 +192,8 @@ export default function RoadMap({
     onRequestGeoRef.current = onRequestGeo;
     currentLocationRef.current = currentLocation;
     themeRef.current = theme;
-  }, [activeSlug, onSelect, onOpen, onRequestGeo, currentLocation, theme]);
+    roadsRef.current = roads;
+  }, [activeSlug, onSelect, onOpen, onRequestGeo, currentLocation, theme, roads]);
 
   // Init map once.
   useEffect(() => {
@@ -388,7 +390,7 @@ export default function RoadMap({
     if (!slug) return;
     const map = mapRef.current;
     if (!map) return;
-    const road = roads.find((r) => r.slug === slug);
+    const road = roadsRef.current.find((r) => r.slug === slug);
     if (!road || road.path.length === 0) return;
     const loc = currentLocationRef.current;
     const bounds = pathBoundsWithPoint(road.path, loc);
@@ -402,12 +404,16 @@ export default function RoadMap({
     };
     if (map.isStyleLoaded()) doFit();
     else map.once("load", doFit);
-  }, [fitToken, roads]);
+  }, [fitToken]);
 
   // Recenter on user's location. Triggered by the parent bumping
   // `recenterToken` (locate button on the map OR "Use GPS" in the
-  // popover). Always asks for a fresh fix; flies to the cached fix
-  // immediately for instant feedback.
+  // popover). The parent has already kicked off the geolocation request
+  // by the time this fires, so we just (a) fly to a cached fix for
+  // instant feedback and (b) flag pendingRecenter so the auto-fly effect
+  // re-flies when the fresh fix arrives. We must NOT call the geo
+  // request again here — that bumps recenterToken and produces an
+  // infinite render loop.
   useEffect(() => {
     if (recenterToken === 0) return;
     const map = mapRef.current;
@@ -417,7 +423,6 @@ export default function RoadMap({
       map.flyTo({ center: [loc.lng, loc.lat], zoom: 13, speed: 1.4 });
     }
     pendingRecenterRef.current = true;
-    onRequestGeoRef.current();
   }, [recenterToken]);
 
   // Home marker.
