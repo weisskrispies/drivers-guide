@@ -147,11 +147,15 @@ body::before {
   border-color: #ffffff;
   color: #ffffff;
 }
+/* Active wins over done — solid accent fill, larger glow ring, on top. */
 .road-marker[data-active="true"] {
+  background-color: var(--accent);
+  border-color: #ffffff;
+  color: #ffffff;
   z-index: 10;
   box-shadow:
-    0 0 0 4px var(--accent-ring),
-    0 3px 10px rgba(0, 0, 0, 0.35);
+    0 0 0 5px var(--accent-ring),
+    0 6px 18px rgba(0, 0, 0, 0.45);
 }
 
 ::selection {

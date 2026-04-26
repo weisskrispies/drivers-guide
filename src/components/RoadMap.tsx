@@ -79,9 +79,17 @@ function routeFeatures(
   };
 }
 
-function pathBounds(path: [number, number][]): LngLatBoundsLike {
-  const lngs = path.map(([lng]) => lng);
-  const lats = path.map(([, lat]) => lat);
+/** Bounds that include the road's path plus an extra point (e.g. the user
+ *  GPS fix), so the fit shows the route in context with where the user is. */
+function pathBoundsWithPoint(
+  path: [number, number][],
+  extra: { lng: number; lat: number } | null,
+): LngLatBoundsLike {
+  const points: [number, number][] = extra
+    ? [...path, [extra.lng, extra.lat]]
+    : path;
+  const lngs = points.map(([lng]) => lng);
+  const lats = points.map(([, lat]) => lat);
   return [
     [Math.min(...lngs), Math.min(...lats)],
     [Math.max(...lngs), Math.max(...lats)],
@@ -373,7 +381,13 @@ export default function RoadMap({
     });
   }, [done, activeSlug]);
 
-  // Fit to active path on list/modal selection.
+  // Fit to active path on list/modal selection. Two behaviours layered:
+  //   - Always use generous padding + a moderate maxZoom so the route
+  //     occupies ~half the canvas, leaving context around it instead of
+  //     filling the screen edge-to-edge.
+  //   - When we already have a GPS fix, include the user's location in
+  //     the bounds so the fit shows the route AND the user together —
+  //     the map naturally zooms further out to keep both visible.
   useEffect(() => {
     if (!fitToActive) return;
     if (!activeSlug) return;
@@ -385,11 +399,18 @@ export default function RoadMap({
     if (!map) return;
     const road = roads.find((r) => r.slug === activeSlug);
     if (!road || road.path.length === 0) return;
+    const loc = currentLocationRef.current;
+    const bounds = pathBoundsWithPoint(road.path, loc);
+    // Wider padding when we're showing user-and-route together so neither
+    // hugs an edge.
+    const pad = loc ? 140 : 110;
     const doFit = () => {
-      map.fitBounds(pathBounds(road.path), {
-        padding: { top: 80, right: 80, bottom: 80, left: 80 },
-        duration: 700,
-        maxZoom: 12.5,
+      map.fitBounds(bounds, {
+        padding: { top: pad, right: pad, bottom: pad, left: pad },
+        duration: 800,
+        // Keep things contextual rather than over-zoomed when the route
+        // is short.
+        maxZoom: loc ? 11 : 11.5,
       });
     };
     if (map.isStyleLoaded()) doFit();
