@@ -32,9 +32,12 @@ jobs:
       - name: Build static export
         env:
           NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
-          # Optional — only set in GitHub repo Secrets if you want to enable
-          # Google sign-in. When unset, the build still succeeds and the
-          # auth UI shows "sign-in is not configured".
+          # Optional — set in GitHub repo Secrets to enable Google
+          # sign-in. When unset, the build still succeeds and the auth UI
+          # shows "sign-in is not configured".
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
+          # Reserved for future server-side data sync. Not used by the
+          # current sign-in flow.
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
         run: npm run build
