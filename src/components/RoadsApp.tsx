@@ -94,12 +94,11 @@ export default function RoadsApp() {
   }, [activeSlug, visibleRoads]);
 
   // List/modal selection: select the road and immediately ask the map
-  // to fit to it. Imperative — no state-propagation indirection.
+  // to fit to it. The slug is passed straight into the imperative call
+  // — no ref dance, no microtask, no race with React's commit phase.
   const handleSelectAndFit = useCallback((slug: string) => {
     setActiveSlug(slug);
-    // Run after this render commits, so the map has the new active slug
-    // (synced via ref in RoadMap's layoutEffect) when fitToActive reads it.
-    queueMicrotask(() => mapRef.current?.fitToActive());
+    mapRef.current?.fitTo(slug);
   }, []);
 
   // Map-originated selection: don't move the map, the user already sees
@@ -110,7 +109,7 @@ export default function RoadsApp() {
 
   const handleOpen = useCallback((slug: string) => {
     setActiveSlug(slug);
-    queueMicrotask(() => mapRef.current?.fitToActive());
+    mapRef.current?.fitTo(slug);
     setFocusedSlug(slug);
   }, []);
 

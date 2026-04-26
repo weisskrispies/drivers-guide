@@ -13,9 +13,11 @@ import type { Road, LatLng } from "@/lib/roads/types";
 import type { Theme } from "@/lib/storage";
 
 /** Imperative handle exposed to RoadsApp so list clicks can fly the map
- *  directly, no useEffect / state propagation in the loop. */
+ *  directly, no useEffect / state propagation in the loop. The slug is
+ *  passed in as an argument (rather than read from a ref) so there's no
+ *  race between React committing the new activeSlug and the call. */
 export type MapHandle = {
-  fitToActive: () => void;
+  fitTo: (slug: string) => void;
   recenter: () => void;
 };
 
@@ -384,8 +386,7 @@ export default function RoadMap({
   useEffect(() => {
     if (!handleRef) return;
     const handle: MapHandle = {
-      fitToActive: () => {
-        const slug = activeSlugRef.current;
+      fitTo: (slug: string) => {
         if (!slug) return;
         const map = mapRef.current;
         if (!map) return;
