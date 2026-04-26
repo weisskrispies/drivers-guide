@@ -8,6 +8,7 @@ import { haversineMiles } from "@/lib/geo";
 import { useCompletions, useHomeLocation, useTheme } from "@/lib/storage";
 import ProfileMenu from "./ProfileMenu";
 import RoadCard from "./RoadCard";
+import MobileCardCarousel from "./MobileCardCarousel";
 import RoadFocused from "./RoadFocused";
 import ThemeToggle from "./ThemeToggle";
 import type { MapHandle } from "./RoadMap";
@@ -226,29 +227,18 @@ export default function RoadsApp() {
             onRequestGeo={requestGeo}
           />
 
-          {/* Mobile-only bottom sheet for the active road */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 p-3 md:hidden">
-            {(() => {
-              const active = visibleRoads.find(
-                (r) => r.road.slug === effectiveActiveSlug,
-              );
-              if (!active) return null;
-              const index = visibleRoads.indexOf(active);
-              return (
-                <div className="pointer-events-auto">
-                  <RoadCard
-                    road={active.road}
-                    index={index}
-                    distanceFromOrigin={active.distance}
-                    originLabel={origin?.label ?? null}
-                    done={done.has(active.road.slug)}
-                    active
-                    onSelect={() => handleSelectAndFit(active.road.slug)}
-                    onOpen={() => handleOpen(active.road.slug)}
-                  />
-                </div>
-              );
-            })()}
+          {/* Mobile-only swipeable carousel of compact road cards.
+              Whatever's centered becomes the active road and re-fits
+              the map; tap a card to open the full-detail modal. */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 pt-3 md:hidden">
+            <MobileCardCarousel
+              entries={visibleRoads}
+              activeSlug={effectiveActiveSlug}
+              done={done}
+              originLabel={origin?.label ?? null}
+              onSelect={handleSelectAndFit}
+              onOpen={handleOpen}
+            />
           </div>
         </main>
 

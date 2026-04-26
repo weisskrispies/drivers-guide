@@ -10,6 +10,10 @@ type Props = {
   originLabel: string | null;
   done: boolean;
   active: boolean;
+  /** Compact mode renders a short header + stat row only — no summary,
+   *  chips, or hazard rows. Used in the mobile carousel where the card
+   *  needs to leave most of the map visible. */
+  compact?: boolean;
   onSelect: () => void;
   onOpen: () => void;
 };
@@ -35,29 +39,42 @@ export default function RoadCard({
   originLabel,
   done,
   active,
+  compact,
   onSelect,
   onOpen,
 }: Props) {
+  // Compact: single-tap opens the modal — the carousel makes selection
+  // happen via swipe, so a tap on the visible card is the user asking
+  // for more detail.
+  const handleClick = compact ? onOpen : onSelect;
   return (
     <article
-      onClick={onSelect}
+      onClick={handleClick}
       onDoubleClick={onOpen}
       className={[
         "group relative cursor-pointer overflow-hidden rounded-2xl border bg-[var(--surface)] transition-colors",
-        active ? "p-5" : "p-4 sm:p-5",
+        compact
+          ? "p-3"
+          : active
+            ? "p-5"
+            : "p-4 sm:p-5",
         active
-          ? "border-2 border-[color:var(--accent)] shadow-[0_18px_48px_-16px_rgba(252,82,0,0.45)]"
+          ? "border-2 border-[color:var(--accent)] shadow-[0_0_0_1px_var(--accent),0_18px_48px_-16px_rgba(252,82,0,0.45)]"
           : "border border-[var(--border)] shadow-[var(--shadow-card)] hover:border-[var(--border-strong)]",
         done ? "opacity-75" : "",
       ].join(" ")}
     >
-      <div className="flex items-start gap-3.5">
+      <div className="flex items-start gap-3">
         <span
           className={[
             "mt-0.5 flex shrink-0 items-center justify-center rounded-full font-semibold tabular-nums transition-colors",
             active
-              ? "h-9 w-9 bg-[color:var(--accent)] text-[13px] text-white"
-              : "h-8 w-8 bg-[var(--surface-2)] text-[12px] text-[var(--text-muted)] group-hover:bg-[color:var(--accent)] group-hover:text-white",
+              ? compact
+                ? "h-7 w-7 bg-[color:var(--accent)] text-[12px] text-white"
+                : "h-9 w-9 bg-[color:var(--accent)] text-[13px] text-white"
+              : compact
+                ? "h-7 w-7 bg-[var(--surface-2)] text-[12px] text-[var(--text-muted)]"
+                : "h-8 w-8 bg-[var(--surface-2)] text-[12px] text-[var(--text-muted)] group-hover:bg-[color:var(--accent)] group-hover:text-white",
           ].join(" ")}
         >
           {index + 1}
@@ -77,7 +94,7 @@ export default function RoadCard({
           <h3
             className={[
               "mt-1 font-semibold leading-snug tracking-tight text-[var(--text)]",
-              active ? "text-[17px]" : "text-[15px]",
+              compact ? "truncate text-[15px]" : active ? "text-[17px]" : "text-[15px]",
               done
                 ? "line-through decoration-[color:var(--accent)] decoration-2"
                 : "",
@@ -103,21 +120,45 @@ export default function RoadCard({
         )}
       </div>
 
-      <dl className="mt-4 grid grid-cols-4 gap-2">
-        <Stat label="Miles" value={formatMiles(road.distanceMiles)} />
-        <Stat label="Time" value={formatMinutes(road.estDriveMinutes)} />
-        <Stat
-          label="Elev"
-          value={`+${Math.round(road.elevationGainFt).toLocaleString()}ʹ`}
-        />
-        <Stat
-          label="Grade"
-          value={DIFFICULTY_LABEL[road.difficulty]}
-          tone={DIFFICULTY_TONE[road.difficulty]}
-        />
-      </dl>
+      {compact ? (
+        <dl className="mt-2.5 flex items-center gap-3 text-[12px] tabular-nums">
+          <span className="font-semibold text-[var(--text)]">
+            {formatMiles(road.distanceMiles)}
+          </span>
+          <Sep />
+          <span className="font-semibold text-[var(--text)]">
+            {formatMinutes(road.estDriveMinutes)}
+          </span>
+          <Sep />
+          <span className="font-semibold text-[var(--text)]">
+            +{Math.round(road.elevationGainFt).toLocaleString()}ʹ
+          </span>
+          <Sep />
+          <span
+            className={["font-semibold", DIFFICULTY_TONE[road.difficulty]].join(
+              " ",
+            )}
+          >
+            {DIFFICULTY_LABEL[road.difficulty]}
+          </span>
+        </dl>
+      ) : (
+        <dl className="mt-4 grid grid-cols-4 gap-2">
+          <Stat label="Miles" value={formatMiles(road.distanceMiles)} />
+          <Stat label="Time" value={formatMinutes(road.estDriveMinutes)} />
+          <Stat
+            label="Elev"
+            value={`+${Math.round(road.elevationGainFt).toLocaleString()}ʹ`}
+          />
+          <Stat
+            label="Grade"
+            value={DIFFICULTY_LABEL[road.difficulty]}
+            tone={DIFFICULTY_TONE[road.difficulty]}
+          />
+        </dl>
+      )}
 
-      {active && (
+      {!compact && active && (
         <div className="mt-4 space-y-3.5 border-t border-[var(--border)] pt-4">
           <p className="text-[13.5px] leading-relaxed text-[var(--text-muted)]">
             {road.summary}
@@ -189,6 +230,14 @@ function Stat({
         {value}
       </div>
     </div>
+  );
+}
+
+function Sep() {
+  return (
+    <span aria-hidden className="text-[var(--text-dim)]">
+      ·
+    </span>
   );
 }
 
