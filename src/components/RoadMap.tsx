@@ -408,17 +408,34 @@ export default function RoadMap({
         if (!road || road.path.length === 0) return;
         const loc = currentLocationRef.current;
         const bounds = pathBoundsWithPoint(road.path, loc);
+        const padding = loc ? 100 : 80;
+        const maxZoom = loc ? 13 : 12;
         const doFit = () => {
-          map.fitBounds(bounds, {
-            // With a GPS fix in the bounds, no maxZoom cap — let
-            // fitBounds naturally pull back to frame route + user.
-            // Solo route gets capped at z=12 so short roads don't slam
-            // to street level.
-            padding: loc
-              ? { top: 100, right: 100, bottom: 100, left: 100 }
-              : { top: 80, right: 80, bottom: 80, left: 80 },
+          // Compute the target camera explicitly, then easeTo. fitBounds
+          // with `maxZoom: undefined` was occasionally a no-op; computing
+          // the camera ourselves and animating with `essential: true`
+          // sidesteps both that and any prefers-reduced-motion gating.
+          const camera = map.cameraForBounds(bounds, { padding, maxZoom });
+          console.debug("[RoadMap] fitTo", slug, {
+            bounds,
+            loc,
+            camera,
+            currentZoom: map.getZoom(),
+          });
+          if (!camera) {
+            map.fitBounds(bounds, {
+              padding,
+              duration: 900,
+              maxZoom,
+              essential: true,
+            });
+            return;
+          }
+          map.easeTo({
+            center: camera.center,
+            zoom: camera.zoom ?? maxZoom,
             duration: 900,
-            maxZoom: loc ? undefined : 12,
+            essential: true,
           });
         };
         if (map.isStyleLoaded()) doFit();
@@ -428,8 +445,14 @@ export default function RoadMap({
         const map = mapRef.current;
         if (!map) return;
         const loc = currentLocationRef.current;
+        console.debug("[RoadMap] recenter", { loc, currentZoom: map.getZoom() });
         if (loc) {
-          map.flyTo({ center: [loc.lng, loc.lat], zoom: 13, speed: 1.4 });
+          map.flyTo({
+            center: [loc.lng, loc.lat],
+            zoom: 13,
+            speed: 1.4,
+            essential: true,
+          });
         }
         // Flag so the auto-fly effect refits when the fresh GPS arrives.
         pendingRecenterRef.current = true;
