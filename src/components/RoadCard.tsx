@@ -46,20 +46,24 @@ export default function RoadCard({
       onDoubleClick={onOpen}
       className={[
         "group relative cursor-pointer overflow-hidden rounded-2xl border bg-[var(--surface)] transition-colors",
-        "p-4 sm:p-5",
+        active ? "p-5" : "p-4 sm:p-5",
         active
-          ? "border-[color:var(--accent)] shadow-[0_0_0_1px_var(--accent),var(--shadow-card)]"
+          ? "border-[color:var(--accent)] shadow-[0_0_0_1px_var(--accent),0_18px_48px_-16px_rgba(252,82,0,0.45)]"
           : "border-[var(--border)] shadow-[var(--shadow-card)] hover:border-[var(--border-strong)]",
         done ? "opacity-75" : "",
       ].join(" ")}
     >
+      {active && (
+        <div className="pointer-events-none absolute left-0 top-0 h-full w-1 bg-[color:var(--accent)]" />
+      )}
+
       <div className="flex items-start gap-3.5">
         <span
           className={[
-            "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold tabular-nums transition-colors",
+            "mt-0.5 flex shrink-0 items-center justify-center rounded-full font-semibold tabular-nums transition-colors",
             active
-              ? "bg-[color:var(--accent)] text-white"
-              : "bg-[var(--surface-2)] text-[var(--text-muted)] group-hover:bg-[color:var(--accent)] group-hover:text-white",
+              ? "h-9 w-9 bg-[color:var(--accent)] text-[13px] text-white"
+              : "h-8 w-8 bg-[var(--surface-2)] text-[12px] text-[var(--text-muted)] group-hover:bg-[color:var(--accent)] group-hover:text-white",
           ].join(" ")}
         >
           {index + 1}
@@ -78,7 +82,8 @@ export default function RoadCard({
           </div>
           <h3
             className={[
-              "mt-1 text-[15px] font-semibold leading-snug tracking-tight text-[var(--text)]",
+              "mt-1 font-semibold leading-snug tracking-tight text-[var(--text)]",
+              active ? "text-[17px]" : "text-[15px]",
               done
                 ? "line-through decoration-[color:var(--accent)] decoration-2"
                 : "",
@@ -121,19 +126,42 @@ export default function RoadCard({
       </dl>
 
       {active && (
-        <div className="mt-4 flex items-center justify-between gap-3 border-t border-[var(--border)] pt-3.5">
-          <p className="line-clamp-2 text-[12.5px] leading-snug text-[var(--text-muted)]">
+        <div className="mt-4 space-y-3.5 border-t border-[var(--border)] pt-4">
+          <p className="text-[13.5px] leading-relaxed text-[var(--text-muted)]">
             {road.summary}
           </p>
+
+          {road.characteristics.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {road.characteristics.map((c) => (
+                <span
+                  key={c}
+                  className="rounded-full border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-0.5 text-[11px] text-[var(--text-muted)]"
+                >
+                  {c}
+                </span>
+              ))}
+            </div>
+          )}
+
+          <dl className="space-y-1.5 text-[12px]">
+            {road.bestTime && (
+              <Row label="Best time" value={road.bestTime} />
+            )}
+            {road.hazards.length > 0 && (
+              <Row label="Watch for" value={road.hazards.join(" · ")} warn />
+            )}
+          </dl>
+
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               onOpen();
             }}
-            className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[color:var(--accent)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-[color:var(--accent)] transition-colors hover:bg-[var(--accent-soft)]"
+            className="mt-1 inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-[color:var(--accent)] px-4 py-2 text-[12px] font-semibold uppercase tracking-[0.1em] text-white transition-colors hover:bg-[color:var(--accent-hover)]"
           >
-            Open
+            Open route
             <svg viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3">
               <path
                 fillRule="evenodd"
@@ -170,6 +198,34 @@ function Stat({
       >
         {value}
       </div>
+    </div>
+  );
+}
+
+function Row({
+  label,
+  value,
+  warn,
+}: {
+  label: string;
+  value: string;
+  warn?: boolean;
+}) {
+  return (
+    <div className="flex items-baseline gap-2">
+      <dt className="shrink-0 text-[9px] font-semibold uppercase tracking-[0.14em] text-[var(--text-dim)]">
+        {label}
+      </dt>
+      <dd
+        className={[
+          "min-w-0 flex-1 truncate",
+          warn
+            ? "text-amber-700 dark:text-amber-300"
+            : "text-[var(--text-muted)]",
+        ].join(" ")}
+      >
+        {value}
+      </dd>
     </div>
   );
 }

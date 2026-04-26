@@ -168,6 +168,10 @@ export default function RoadMap({
   const themeRef = useRef<Theme>(theme);
   const hasFitRef = useRef(false);
   const skipNextFitForRef = useRef<string | null>(null);
+  // Set by the on-map locate button; cleared after the next GPS fix is
+  // applied. Lets the auto-fly effect recenter on every locate click, not
+  // just the first fix.
+  const pendingRecenterRef = useRef(false);
   useLayoutEffect(() => {
     activeSlugRef.current = activeSlug;
     onSelectRef.current = onSelect;
@@ -196,12 +200,15 @@ export default function RoadMap({
     );
     map.addControl(
       new LocateControl(() => {
+        // Always ask for a fresh fix so we recenter on the user's current
+        // position, not a stale one. If we already have a fix, fly to it
+        // immediately for instant feedback while the new fix is on its way.
         const loc = currentLocationRef.current;
         if (loc) {
-          map.flyTo({ center: [loc.lng, loc.lat], zoom: 12, speed: 1.4 });
-        } else {
-          onRequestGeoRef.current();
+          map.flyTo({ center: [loc.lng, loc.lat], zoom: 13, speed: 1.4 });
         }
+        pendingRecenterRef.current = true;
+        onRequestGeoRef.current();
       }),
       "top-right",
     );
@@ -247,21 +254,25 @@ export default function RoadMap({
     map.once("styledata", apply);
   }, [theme, roads, done]);
 
-  // Fly to first GPS fix.
+  // Fly to GPS fix when one arrives — on the very first fix, and any time
+  // the locate button is pressed (which sets pendingRecenterRef).
   const gotFirstGpsRef = useRef(false);
   useEffect(() => {
     if (!currentLocation) {
       gotFirstGpsRef.current = false;
       return;
     }
-    if (gotFirstGpsRef.current) return;
     const map = mapRef.current;
     if (!map) return;
+    const isFirst = !gotFirstGpsRef.current;
+    const recenterRequested = pendingRecenterRef.current;
+    if (!isFirst && !recenterRequested) return;
     gotFirstGpsRef.current = true;
+    pendingRecenterRef.current = false;
     const doFly = () =>
       map.flyTo({
         center: [currentLocation.lng, currentLocation.lat],
-        zoom: Math.max(map.getZoom(), 10),
+        zoom: Math.max(map.getZoom(), 12),
         speed: 1.2,
       });
     if (map.isStyleLoaded()) doFly();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { ROADS } from "@/lib/roads/data";
 import type { LatLng } from "@/lib/roads/types";
@@ -133,6 +133,15 @@ export default function RoadsApp() {
     : null;
 
   const doneCount = done.size;
+
+  // Scroll the active road's list item into view whenever the selection
+  // changes — including selections made by tapping the map.
+  const itemRefs = useRef(new Map<string, HTMLLIElement>());
+  useEffect(() => {
+    if (!effectiveActiveSlug) return;
+    const el = itemRefs.current.get(effectiveActiveSlug);
+    el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [effectiveActiveSlug]);
 
   return (
     <div className="flex h-[100svh] min-h-[100svh] flex-col">
@@ -267,7 +276,13 @@ export default function RoadsApp() {
                 </li>
               )}
               {visibleRoads.map(({ road, distance }, index) => (
-                <li key={road.slug}>
+                <li
+                  key={road.slug}
+                  ref={(el) => {
+                    if (el) itemRefs.current.set(road.slug, el);
+                    else itemRefs.current.delete(road.slug);
+                  }}
+                >
                   <RoadCard
                     road={road}
                     index={index}
