@@ -42,7 +42,11 @@ export default function RoadsApp() {
   const [showDone, setShowDone] = useState(true);
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
   const [focusedSlug, setFocusedSlug] = useState<string | null>(null);
-  const [fitPending, setFitPending] = useState(false);
+  // Counters bumped to ask the map for a one-shot fit / recenter. Using
+  // tokens (instead of a boolean flag) means repeated requests for the
+  // same target — even on the same activeSlug — still trigger the action.
+  const [fitToken, setFitToken] = useState(0);
+  const [recenterToken, setRecenterToken] = useState(0);
 
   const origin: { point: LatLng; label: string } | null = useMemo(() => {
     if (currentLocation) return { point: currentLocation, label: "you" };
@@ -90,25 +94,32 @@ export default function RoadsApp() {
     return visibleRoads[0]?.road.slug ?? null;
   }, [activeSlug, visibleRoads]);
 
+  // List/modal selection: selecting bumps the fit token so the map
+  // re-frames to show the route (and the user's location, if known).
   const handleSelectAndFit = useCallback((slug: string) => {
     setActiveSlug(slug);
-    setFitPending(true);
+    setFitToken((t) => t + 1);
   }, []);
 
+  // Map-originated selection: don't move the map, the user already sees
+  // where they tapped.
   const handleSelectNoFit = useCallback((slug: string) => {
     setActiveSlug(slug);
-    setFitPending(false);
   }, []);
 
   const handleOpen = useCallback((slug: string) => {
     setActiveSlug(slug);
-    setFitPending(true);
+    setFitToken((t) => t + 1);
     setFocusedSlug(slug);
   }, []);
 
   const handleCloseFocus = useCallback(() => setFocusedSlug(null), []);
 
+  // Request a recenter on the user's GPS. Both the on-map locate button
+  // and the popover "Use GPS" button call this; the map watches
+  // recenterToken and reacts identically either way.
   const requestGeo = useCallback(() => {
+    setRecenterToken((t) => t + 1);
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       setGeoError("Geolocation not available in this browser.");
       return;
@@ -204,7 +215,8 @@ export default function RoadsApp() {
             home={home}
             currentLocation={currentLocation}
             activeSlug={effectiveActiveSlug}
-            fitToActive={fitPending}
+            fitToken={fitToken}
+            recenterToken={recenterToken}
             theme={theme}
             onSelect={handleSelectNoFit}
             onOpen={handleOpen}
@@ -246,7 +258,8 @@ export default function RoadsApp() {
               home={home}
               currentLocation={currentLocation}
               activeSlug={effectiveActiveSlug}
-              fitToActive={fitPending}
+              fitToken={fitToken}
+            recenterToken={recenterToken}
               theme={theme}
               onSelect={handleSelectNoFit}
               onOpen={handleOpen}

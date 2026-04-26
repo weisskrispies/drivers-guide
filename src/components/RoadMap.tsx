@@ -18,7 +18,12 @@ type Props = {
   home: LatLng | null;
   currentLocation: LatLng | null;
   activeSlug: string | null;
-  fitToActive: boolean;
+  /** Increments every time the parent wants the map to fit to the active
+   *  route (list / modal click). Map clicks don't bump it. */
+  fitToken: number;
+  /** Increments every time the user explicitly asks to recenter on their
+   *  GPS location (locate button on the map, "Use GPS" in the popover). */
+  recenterToken: number;
   theme: Theme;
   onSelect: (slug: string) => void;
   onOpen?: (slug: string) => void;
@@ -154,7 +159,8 @@ export default function RoadMap({
   home,
   currentLocation,
   activeSlug,
-  fitToActive,
+  fitToken,
+  recenterToken,
   theme,
   onSelect,
   onOpen,
@@ -175,10 +181,8 @@ export default function RoadMap({
   const currentLocationRef = useRef<LatLng | null>(null);
   const themeRef = useRef<Theme>(theme);
   const hasFitRef = useRef(false);
-  const skipNextFitForRef = useRef<string | null>(null);
-  // Set by the on-map locate button; cleared after the next GPS fix is
-  // applied. Lets the auto-fly effect recenter on every locate click, not
-  // just the first fix.
+  // True when a recenter has been requested but the GPS fix hasn't arrived
+  // yet — the auto-fly effect consumes it on the next location update.
   const pendingRecenterRef = useRef(false);
   useLayoutEffect(() => {
     activeSlugRef.current = activeSlug;
@@ -208,14 +212,10 @@ export default function RoadMap({
     );
     map.addControl(
       new LocateControl(() => {
-        // Always ask for a fresh fix so we recenter on the user's current
-        // position, not a stale one. If we already have a fix, fly to it
-        // immediately for instant feedback while the new fix is on its way.
-        const loc = currentLocationRef.current;
-        if (loc) {
-          map.flyTo({ center: [loc.lng, loc.lat], zoom: 13, speed: 1.4 });
-        }
-        pendingRecenterRef.current = true;
+        // Delegate to the parent — same path the popover GPS button takes,
+        // so behaviour is identical regardless of where the user triggers
+        // a recenter from. Parent bumps recenterToken which our recenter
+        // effect picks up and translates into a flyTo.
         onRequestGeoRef.current();
       }),
       "top-right",
@@ -247,9 +247,6 @@ export default function RoadMap({
           onSelect: (slug) => onSelectRef.current(slug),
           onOpen: (slug) => onOpenRef.current?.(slug),
           getActiveSlug: () => activeSlugRef.current,
-          markSkipFit: (slug) => {
-            skipNextFitForRef.current = slug;
-          },
         });
       }
       const src = map.getSource("routes") as GeoJSONSource | undefined;
@@ -298,9 +295,6 @@ export default function RoadMap({
           onSelect: (slug) => onSelectRef.current(slug),
           onOpen: (slug) => onOpenRef.current?.(slug),
           getActiveSlug: () => activeSlugRef.current,
-          markSkipFit: (slug) => {
-            skipNextFitForRef.current = slug;
-          },
         });
       }
       const src = map.getSource("routes") as GeoJSONSource | undefined;
@@ -341,7 +335,6 @@ export default function RoadMap({
         el.addEventListener("click", (ev) => {
           ev.stopPropagation();
           const slug = road.slug;
-          skipNextFitForRef.current = slug;
           if (slug === activeSlugRef.current) onOpenRef.current?.(slug);
           else onSelectRef.current(slug);
         });
@@ -381,41 +374,51 @@ export default function RoadMap({
     });
   }, [done, activeSlug]);
 
-  // Fit to active path on list/modal selection. Two behaviours layered:
-  //   - Always use generous padding + a moderate maxZoom so the route
-  //     occupies ~half the canvas, leaving context around it instead of
-  //     filling the screen edge-to-edge.
+  // Fit to active path. Triggered by the parent bumping `fitToken` (list
+  // / modal click). We deliberately do NOT depend on activeSlug or the
+  // map-click selection mechanism — only an explicit list-side intent
+  // moves the map.
+  //   - Generous padding + capped maxZoom so the route occupies ~half
+  //     the canvas, leaving context around it.
   //   - When we already have a GPS fix, include the user's location in
-  //     the bounds so the fit shows the route AND the user together —
-  //     the map naturally zooms further out to keep both visible.
+  //     the bounds so the fit shows the route AND the user together.
   useEffect(() => {
-    if (!fitToActive) return;
-    if (!activeSlug) return;
-    if (skipNextFitForRef.current === activeSlug) {
-      skipNextFitForRef.current = null;
-      return;
-    }
+    if (fitToken === 0) return;
+    const slug = activeSlugRef.current;
+    if (!slug) return;
     const map = mapRef.current;
     if (!map) return;
-    const road = roads.find((r) => r.slug === activeSlug);
+    const road = roads.find((r) => r.slug === slug);
     if (!road || road.path.length === 0) return;
     const loc = currentLocationRef.current;
     const bounds = pathBoundsWithPoint(road.path, loc);
-    // Wider padding when we're showing user-and-route together so neither
-    // hugs an edge.
     const pad = loc ? 140 : 110;
     const doFit = () => {
       map.fitBounds(bounds, {
         padding: { top: pad, right: pad, bottom: pad, left: pad },
         duration: 800,
-        // Keep things contextual rather than over-zoomed when the route
-        // is short.
         maxZoom: loc ? 11 : 11.5,
       });
     };
     if (map.isStyleLoaded()) doFit();
     else map.once("load", doFit);
-  }, [activeSlug, roads, fitToActive]);
+  }, [fitToken, roads]);
+
+  // Recenter on user's location. Triggered by the parent bumping
+  // `recenterToken` (locate button on the map OR "Use GPS" in the
+  // popover). Always asks for a fresh fix; flies to the cached fix
+  // immediately for instant feedback.
+  useEffect(() => {
+    if (recenterToken === 0) return;
+    const map = mapRef.current;
+    if (!map) return;
+    const loc = currentLocationRef.current;
+    if (loc) {
+      map.flyTo({ center: [loc.lng, loc.lat], zoom: 13, speed: 1.4 });
+    }
+    pendingRecenterRef.current = true;
+    onRequestGeoRef.current();
+  }, [recenterToken]);
 
   // Home marker.
   useEffect(() => {
@@ -469,7 +472,6 @@ type RouteHandlers = {
   onSelect: (slug: string) => void;
   onOpen?: (slug: string) => void;
   getActiveSlug: () => string | null;
-  markSkipFit: (slug: string) => void;
 };
 
 function addRoutesLayers(map: MlMap, theme: Theme, handlers: RouteHandlers) {
@@ -522,7 +524,6 @@ function addRoutesLayers(map: MlMap, theme: Theme, handlers: RouteHandlers) {
   map.on("click", "routes-line", (e) => {
     const slug = e.features?.[0]?.properties?.slug;
     if (typeof slug !== "string") return;
-    handlers.markSkipFit(slug);
     if (slug === handlers.getActiveSlug()) handlers.onOpen?.(slug);
     else handlers.onSelect(slug);
   });
