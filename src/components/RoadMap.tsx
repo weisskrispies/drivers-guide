@@ -185,6 +185,7 @@ export default function RoadMap({
   const currentLocationRef = useRef<LatLng | null>(null);
   const themeRef = useRef<Theme>(theme);
   const roadsRef = useRef<Road[]>(roads);
+  const doneRef = useRef<Set<string>>(done);
   const hasFitRef = useRef(false);
   // True when a recenter has been requested but the GPS fix hasn't arrived
   // yet — the auto-fly effect consumes it on the next location update.
@@ -197,7 +198,8 @@ export default function RoadMap({
     currentLocationRef.current = currentLocation;
     themeRef.current = theme;
     roadsRef.current = roads;
-  }, [activeSlug, onSelect, onOpen, onRequestGeo, currentLocation, theme, roads]);
+    doneRef.current = done;
+  }, [activeSlug, onSelect, onOpen, onRequestGeo, currentLocation, theme, roads, done]);
 
   // Init map once.
   useEffect(() => {
@@ -242,11 +244,16 @@ export default function RoadMap({
   }, []);
 
   // Swap basemap when the theme changes — re-add our layers afterwards.
+  // CRITICAL: this effect MUST only depend on `theme`. Including `roads`
+  // or `done` here calls map.setStyle() on every parent re-render (the
+  // roads array gets a new identity from `.map()` every render), which
+  // tears down and recreates the entire style — and cancels any
+  // in-progress flyTo/fitBounds animation. That's what was killing
+  // list-click fits after the first interaction.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     map.setStyle(buildStyle(theme));
-    // Re-add routes once the new style is loaded; markers remain in place.
     const apply = () => {
       if (!map.getSource("routes")) {
         addRoutesLayers(map, theme, {
@@ -256,14 +263,21 @@ export default function RoadMap({
         });
       }
       const src = map.getSource("routes") as GeoJSONSource | undefined;
-      if (src) src.setData(routeFeatures(roads, activeSlugRef.current, done));
-      // Make sure layer paint reflects the theme casing color.
+      if (src) {
+        src.setData(
+          routeFeatures(
+            roadsRef.current,
+            activeSlugRef.current,
+            doneRef.current,
+          ),
+        );
+      }
       if (map.getLayer("routes-casing")) {
         map.setPaintProperty("routes-casing", "line-color", lineCasing(theme));
       }
     };
     map.once("styledata", apply);
-  }, [theme, roads, done]);
+  }, [theme]);
 
   // Fly to GPS fix when one arrives — on the very first fix, and any time
   // the locate button is pressed (which sets pendingRecenterRef).
