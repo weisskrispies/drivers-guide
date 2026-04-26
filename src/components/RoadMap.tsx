@@ -394,12 +394,17 @@ export default function RoadMap({
     if (!road || road.path.length === 0) return;
     const loc = currentLocationRef.current;
     const bounds = pathBoundsWithPoint(road.path, loc);
-    const pad = loc ? 140 : 110;
     const doFit = () => {
       map.fitBounds(bounds, {
-        padding: { top: pad, right: pad, bottom: pad, left: pad },
-        duration: 800,
-        maxZoom: loc ? 11 : 11.5,
+        // When we're including the user's GPS, no zoom cap — let the fit
+        // naturally pull back enough to show route + user together. When
+        // the route is alone, cap at z=12 so very short roads don't slam
+        // to street level.
+        padding: loc
+          ? { top: 100, right: 100, bottom: 100, left: 100 }
+          : { top: 80, right: 80, bottom: 80, left: 80 },
+        duration: 900,
+        maxZoom: loc ? undefined : 12,
       });
     };
     if (map.isStyleLoaded()) doFit();
