@@ -1,14 +1,27 @@
 "use client";
 
 import { useEffect } from "react";
+import dynamic from "next/dynamic";
 import type { Road } from "@/lib/roads/types";
+import type { Theme } from "@/lib/storage";
 import { formatMiles, formatMinutes } from "@/lib/geo";
+
+// MiniMap is dynamic so maplibre-gl never bundles into the SSR pass.
+const MiniMap = dynamic(() => import("./MiniMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full items-center justify-center bg-[var(--surface-2)] text-xs text-[var(--text-muted)]">
+      Loading route…
+    </div>
+  ),
+});
 
 type Props = {
   road: Road;
   distanceFromOrigin: number | null;
   originLabel: string | null;
   done: boolean;
+  theme: Theme;
   onToggleDone: () => void;
   onClose: () => void;
 };
@@ -40,6 +53,7 @@ export default function RoadFocused({
   distanceFromOrigin,
   originLabel,
   done,
+  theme,
   onToggleDone,
   onClose,
 }: Props) {
@@ -88,6 +102,11 @@ export default function RoadFocused({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto">
+          {/* Focused mini route map at the top of the modal */}
+          <div className="relative h-56 w-full overflow-hidden border-b border-[var(--border)] bg-[var(--surface-2)] sm:h-64">
+            <MiniMap road={road} theme={theme} />
+          </div>
+
           <header className="px-6 pt-6">
             <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-[var(--text-dim)]">
               <span>{road.region}</span>

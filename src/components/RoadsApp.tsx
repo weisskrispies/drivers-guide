@@ -227,7 +227,6 @@ export default function RoadsApp() {
                   originLabel={origin?.label ?? null}
                   done={done.has(active.road.slug)}
                   active
-                  onToggleDone={() => toggle(active.road.slug)}
                   onSelect={() => handleSelectAndFit(active.road.slug)}
                   onOpen={() => handleOpen(active.road.slug)}
                 />
@@ -290,7 +289,6 @@ export default function RoadsApp() {
                     originLabel={origin?.label ?? null}
                     done={done.has(road.slug)}
                     active={effectiveActiveSlug === road.slug}
-                    onToggleDone={() => toggle(road.slug)}
                     onSelect={() => handleSelectAndFit(road.slug)}
                     onOpen={() => handleOpen(road.slug)}
                   />
@@ -307,6 +305,7 @@ export default function RoadsApp() {
           distanceFromOrigin={focusedEntry.distance}
           originLabel={origin?.label ?? null}
           done={done.has(focusedEntry.road.slug)}
+          theme={theme}
           onToggleDone={() => toggle(focusedEntry.road.slug)}
           onClose={handleCloseFocus}
         />

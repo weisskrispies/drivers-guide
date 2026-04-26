@@ -10,7 +10,6 @@ type Props = {
   originLabel: string | null;
   done: boolean;
   active: boolean;
-  onToggleDone: () => void;
   onSelect: () => void;
   onOpen: () => void;
 };
@@ -36,7 +35,6 @@ export default function RoadCard({
   originLabel,
   done,
   active,
-  onToggleDone,
   onSelect,
   onOpen,
 }: Props) {
@@ -48,15 +46,11 @@ export default function RoadCard({
         "group relative cursor-pointer overflow-hidden rounded-2xl border bg-[var(--surface)] transition-colors",
         active ? "p-5" : "p-4 sm:p-5",
         active
-          ? "border-[color:var(--accent)] shadow-[0_0_0_1px_var(--accent),0_18px_48px_-16px_rgba(252,82,0,0.45)]"
-          : "border-[var(--border)] shadow-[var(--shadow-card)] hover:border-[var(--border-strong)]",
+          ? "border-2 border-[color:var(--accent)] shadow-[0_18px_48px_-16px_rgba(252,82,0,0.45)]"
+          : "border border-[var(--border)] shadow-[var(--shadow-card)] hover:border-[var(--border-strong)]",
         done ? "opacity-75" : "",
       ].join(" ")}
     >
-      {active && (
-        <div className="pointer-events-none absolute left-0 top-0 h-full w-1 bg-[color:var(--accent)]" />
-      )}
-
       <div className="flex items-start gap-3.5">
         <span
           className={[
@@ -92,23 +86,21 @@ export default function RoadCard({
             {road.name}
           </h3>
         </div>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleDone();
-          }}
-          aria-pressed={done}
-          aria-label={done ? "Mark as not driven" : "Mark as driven"}
-          className={[
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 text-sm transition-colors",
-            done
-              ? "border-[color:var(--accent)] bg-[color:var(--accent)] text-white hover:bg-[color:var(--accent-hover)]"
-              : "border-[var(--border-strong)] bg-transparent text-[var(--text-dim)] hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]",
-          ].join(" ")}
-        >
-          {done ? "✓" : ""}
-        </button>
+        {done && (
+          <span
+            aria-label="Driven"
+            title="Driven"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[color:var(--accent)] text-white"
+          >
+            <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+              <path
+                fillRule="evenodd"
+                d="M16.704 5.29a1 1 0 0 1 0 1.42l-8 8a1 1 0 0 1-1.414 0l-4-4a1 1 0 1 1 1.414-1.42L8 12.58l7.29-7.29a1 1 0 0 1 1.414 0Z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </span>
+        )}
       </div>
 
       <dl className="mt-4 grid grid-cols-4 gap-2">
@@ -145,9 +137,7 @@ export default function RoadCard({
           )}
 
           <dl className="space-y-1.5 text-[12px]">
-            {road.bestTime && (
-              <Row label="Best time" value={road.bestTime} />
-            )}
+            {road.bestTime && <Row label="Best time" value={road.bestTime} />}
             {road.hazards.length > 0 && (
               <Row label="Watch for" value={road.hazards.join(" · ")} warn />
             )}
