@@ -1,89 +1,32 @@
 "use client";
 
-import { useCallback, useSyncExternalStore } from "react";
-
-const STORAGE_KEY = "driversguide.introDismissed";
+import { useEffect } from "react";
 
 type Props = {
   totalRoutes: number;
+  open: boolean;
+  onClose: () => void;
 };
 
-// Module-level subscriber set so writes from this tab also trigger
-// re-renders (the native `storage` event fires only across tabs).
-const listeners = new Set<() => void>();
-function notify() {
-  listeners.forEach((l) => l());
-}
-function subscribe(cb: () => void) {
-  listeners.add(cb);
-  const onStorage = (e: StorageEvent) => {
-    if (e.key === STORAGE_KEY) cb();
-  };
-  if (typeof window !== "undefined") {
-    window.addEventListener("storage", onStorage);
-  }
-  return () => {
-    listeners.delete(cb);
-    if (typeof window !== "undefined") {
-      window.removeEventListener("storage", onStorage);
-    }
-  };
-}
-function getDismissed(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    return window.localStorage.getItem(STORAGE_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-function getServerDismissed(): boolean {
-  return false;
-}
+/**
+ * About / disclaimer panel modeled after the popos app's intro: a
+ * contained card with a 2-column layout (text left, illustrative
+ * placeholder right), opened on demand via the info button next to
+ * the wordmark. Default closed so the map gets the full canvas on
+ * first load.
+ */
+export default function IntroSection({ totalRoutes, open, onClose }: Props) {
+  // Esc closes the panel.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
 
-export default function IntroSection({ totalRoutes }: Props) {
-  const dismissed = useSyncExternalStore(
-    subscribe,
-    getDismissed,
-    getServerDismissed,
-  );
-  const open = !dismissed;
-
-  const dismiss = useCallback(() => {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, "1");
-    } catch {
-      /* ignore */
-    }
-    notify();
-  }, []);
-
-  const reopen = useCallback(() => {
-    try {
-      window.localStorage.removeItem(STORAGE_KEY);
-    } catch {
-      /* ignore */
-    }
-    notify();
-  }, []);
-
-  if (!open) {
-    return (
-      <section className="relative z-10 shrink-0 border-b border-[var(--border)] bg-[var(--bg)]/85 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-[1600px] items-center gap-2 px-4 py-2 sm:px-6 lg:px-8">
-          <button
-            type="button"
-            onClick={reopen}
-            aria-label="About this site"
-            className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-[11px] font-medium text-[var(--text-muted)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text)]"
-          >
-            <InfoGlyph />
-            About
-          </button>
-        </div>
-      </section>
-    );
-  }
+  if (!open) return null;
 
   return (
     <section className="relative z-10 shrink-0 border-b border-[var(--border)] bg-[var(--bg)]">
@@ -98,8 +41,8 @@ export default function IntroSection({ totalRoutes }: Props) {
                 </h2>
                 <button
                   type="button"
-                  onClick={dismiss}
-                  aria-label="Dismiss intro"
+                  onClick={onClose}
+                  aria-label="Close"
                   className="-mr-1 -mt-1 shrink-0 rounded-full p-1.5 text-[var(--text-dim)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
                 >
                   <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
@@ -150,7 +93,6 @@ export default function IntroSection({ totalRoutes }: Props) {
                 preserveAspectRatio="xMidYMid slice"
                 aria-hidden
               >
-                {/* Layered topographic ridgeline silhouette */}
                 <path
                   d="M0,150 L20,138 L42,148 L70,128 L96,140 L120,118 L150,130 L180,108 L210,124 L240,112 L240,200 L0,200 Z"
                   fill="var(--accent)"
@@ -166,7 +108,6 @@ export default function IntroSection({ totalRoutes }: Props) {
                   fill="var(--accent)"
                   opacity="0.55"
                 />
-                {/* Road S-curve over the foreground */}
                 <path
                   d="M-10,200 C 60,170 80,140 130,150 C 180,160 200,130 250,120"
                   fill="none"
@@ -174,7 +115,6 @@ export default function IntroSection({ totalRoutes }: Props) {
                   strokeWidth="3"
                   strokeLinecap="round"
                 />
-                {/* Sun / moon ornament */}
                 <circle cx="190" cy="48" r="22" fill="var(--accent)" opacity="0.45" />
               </svg>
               <div className="absolute inset-x-0 bottom-2 px-3 text-right text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--text-dim)]">
@@ -196,17 +136,5 @@ function Block({ label, children }: { label: string; children: React.ReactNode }
       </div>
       <p>{children}</p>
     </div>
-  );
-}
-
-function InfoGlyph() {
-  return (
-    <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
-      <path
-        fillRule="evenodd"
-        d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11.5a.75.75 0 0 1-1.5 0v-.5a.75.75 0 0 1 1.5 0v.5Zm0 8a.75.75 0 0 1-1.5 0v-5a.75.75 0 0 1 1.5 0v5Z"
-        clipRule="evenodd"
-      />
-    </svg>
   );
 }

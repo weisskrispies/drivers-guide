@@ -603,16 +603,41 @@ export const ROADS: Road[] = [
     characteristics: ["loop", "ridge", "reservoir", "park"],
     hazards: ["cyclists", "deer at dawn/dusk", "fog over Wildcat ridge"],
     bestTime: "Weekday mornings before commute traffic",
-    start: { lat: 37.911, lng: -122.246, label: "Berkeley (Wildcat)" },
-    end: { lat: 37.871, lng: -122.193, label: "Orinda (Bear Creek)" },
+    start: { lat: 37.913, lng: -122.246, label: "Berkeley (Inspiration Pt.)" },
+    end: { lat: 37.962, lng: -122.222, label: "Briones (Bear Creek Rd)" },
+    // Hand-routed to follow the actual roads around the reservoirs (the
+    // previous waypoint set drew straight lines across San Pablo and
+    // Briones reservoirs because some interior points landed on water).
     path: [
-      [-122.246, 37.911],
-      [-122.235, 37.93],
-      [-122.213, 37.945],
-      [-122.197, 37.93],
-      [-122.18, 37.911],
-      [-122.183, 37.89],
-      [-122.193, 37.871],
+      // Inspiration Point — south end of Wildcat Canyon Rd in Tilden
+      [-122.246, 37.913],
+      // Wildcat Canyon Rd descends NW along the east edge of Tilden
+      [-122.252, 37.925],
+      [-122.262, 37.94],
+      [-122.273, 37.952],
+      [-122.282, 37.962],
+      // Joins San Pablo Dam Rd at the NW corner of San Pablo Reservoir
+      [-122.286, 37.968],
+      // San Pablo Dam Rd hugs the SOUTH shore of the reservoir (south of
+      // the water line), heading SE toward Orinda
+      [-122.276, 37.96],
+      [-122.265, 37.948],
+      [-122.253, 37.937],
+      [-122.238, 37.926],
+      [-122.22, 37.916],
+      [-122.205, 37.903],
+      [-122.195, 37.893],
+      // Orinda — Camino Pablo intersection where SP Dam Rd meets Bear
+      // Creek Rd
+      [-122.187, 37.882],
+      // Bear Creek Rd climbs N between San Pablo Reservoir (west) and
+      // Briones Reservoir (east)
+      [-122.193, 37.895],
+      [-122.2, 37.91],
+      [-122.207, 37.925],
+      [-122.215, 37.94],
+      [-122.222, 37.953],
+      [-122.222, 37.962],
     ],
     sources: [SOURCE_PASHNIT],
   },

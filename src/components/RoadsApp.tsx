@@ -49,6 +49,9 @@ export default function RoadsApp() {
   const [sortBy, setSortBy] = useState<SortBy>("distance");
   const [showDone, setShowDone] = useState(true);
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
+  // Intro panel is opt-in: default closed, opens via the info button
+  // next to the wordmark.
+  const [introOpen, setIntroOpen] = useState(false);
   const [focusedSlug, setFocusedSlug] = useState<string | null>(null);
   // Imperative handle into the map. Click handlers call mapRef.current
   // directly, no state propagation through useEffect.
@@ -184,12 +187,34 @@ export default function RoadsApp() {
             </div>
             <div className="min-w-0 leading-tight">
               <h1 className="truncate text-[15px] font-semibold tracking-tight text-[var(--text)]">
-                Bay Area Driving Roads
+                Driver&rsquo;s Guide
+                {/* Keep the SEO-keyword phrase in the H1 for crawlers
+                    while keeping the visible wordmark short. */}
+                <span className="sr-only">
+                  {" "}— Bay Area driving roads, scenic drives near San
+                  Francisco
+                </span>
               </h1>
               <div className="hidden text-[10px] uppercase tracking-[0.18em] text-[var(--text-dim)] sm:block">
-                Scenic drives near San Francisco
+                Bay Area driving roads
               </div>
             </div>
+            {/* Info button toggles the about/intro panel */}
+            <button
+              type="button"
+              onClick={() => setIntroOpen((v) => !v)}
+              aria-label="About this guide"
+              aria-expanded={introOpen}
+              className="ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] transition-colors hover:border-[var(--border-strong)] hover:text-[color:var(--accent)]"
+            >
+              <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11.5a.75.75 0 0 1-1.5 0v-.5a.75.75 0 0 1 1.5 0v.5Zm0 8a.75.75 0 0 1-1.5 0v-5a.75.75 0 0 1 1.5 0v5Z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
           </div>
 
           {/* Right: theme toggle + profile */}
@@ -213,7 +238,11 @@ export default function RoadsApp() {
         </div>
       </header>
 
-      <IntroSection totalRoutes={ROADS.length} />
+      <IntroSection
+        totalRoutes={ROADS.length}
+        open={introOpen}
+        onClose={() => setIntroOpen(false)}
+      />
 
       {/* One RoadMap, two layouts via CSS:
           - Mobile: map fills the viewport, list collapses to a bottom-sheet
