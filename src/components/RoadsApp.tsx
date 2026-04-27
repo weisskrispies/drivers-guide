@@ -159,9 +159,9 @@ export default function RoadsApp() {
     <div className="flex h-[100svh] min-h-[100svh] flex-col">
       <header className="relative z-20 shrink-0 border-b border-[var(--border)] bg-[var(--bg)]/85 backdrop-blur">
         <div className="mx-auto flex h-16 w-full max-w-[1600px] items-center justify-between px-4 sm:px-6 lg:px-8">
-          {/* Brand */}
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--accent-soft)]">
+          {/* Brand — H1 lives here for SEO */}
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-soft)]">
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -176,12 +176,12 @@ export default function RoadsApp() {
                 />
               </svg>
             </div>
-            <div className="leading-tight">
-              <div className="text-[14px] font-semibold tracking-tight text-[var(--text)]">
-                Driver&rsquo;s Guide
-              </div>
+            <div className="min-w-0 leading-tight">
+              <h1 className="truncate text-[15px] font-semibold tracking-tight text-[var(--text)]">
+                Bay Area Driving Roads
+              </h1>
               <div className="hidden text-[10px] uppercase tracking-[0.18em] text-[var(--text-dim)] sm:block">
-                Bay Area drives
+                Scenic drives near San Francisco
               </div>
             </div>
           </div>
@@ -206,6 +206,21 @@ export default function RoadsApp() {
           </div>
         </div>
       </header>
+
+      {/* Visible intro for SEO + first-load context. Compact on mobile so
+          it doesn't eat the map area. */}
+      <section className="relative z-10 shrink-0 border-b border-[var(--border)] bg-[var(--bg)]/85 backdrop-blur">
+        <div className="mx-auto w-full max-w-[1600px] px-4 py-2.5 sm:px-6 sm:py-3 lg:px-8">
+          <p className="text-[12px] leading-snug text-[var(--text-muted)] sm:text-[13px]">
+            A curated guide to the best driving roads in the San Francisco
+            Bay Area, from coastal Highway 1 and the redwood corridors of
+            the Santa Cruz Mountains to the switchbacks of Page Mill Road,
+            Mt. Hamilton, and the Sierra passes beyond. {ROADS.length}{" "}
+            scenic routes with elevation, distance, and difficulty for
+            each.
+          </p>
+        </div>
+      </section>
 
       {/* One RoadMap, two layouts via CSS:
           - Mobile: map fills the viewport, list collapses to a bottom-sheet

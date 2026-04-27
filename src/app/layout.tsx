@@ -12,10 +12,35 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const SITE_URL = "https://weisskrispies.github.io/drivers-guide";
+const SITE_TITLE =
+  "Bay Area Driving Roads — Scenic Routes & Mountain Drives Near San Francisco";
+const SITE_DESCRIPTION =
+  "A curated guide to the best driving roads in the San Francisco Bay Area and Northern California. 29 scenic routes through the Santa Cruz Mountains, Marin Coast, Diablo Range, Sierra passes, and Mendocino coastline — with elevation, distance, and difficulty for each.";
+
 export const metadata: Metadata = {
-  title: "Driver's Guide — SF Bay Area Driving Roads",
-  description:
-    "Find and check off the best Sunday-morning driving roads within 100 miles of San Francisco. Curated from enthusiast forums.",
+  metadataBase: new URL(SITE_URL),
+  title: SITE_TITLE,
+  description: SITE_DESCRIPTION,
+  alternates: {
+    canonical: SITE_URL,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  openGraph: {
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
+    type: "website",
+    siteName: "Driver's Guide",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+  },
 };
 
 export const viewport = {

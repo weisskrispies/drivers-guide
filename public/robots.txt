@@ -1,0 +1,5 @@
+# https://weisskrispies.github.io/drivers-guide
+User-agent: *
+Allow: /
+
+Sitemap: https://weisskrispies.github.io/drivers-guide/sitemap.xml
