@@ -56,7 +56,7 @@ export const viewport = {
 // light/dark flash on first load.
 const THEME_BOOT = `(function(){try{var s=localStorage.getItem('driversguide.theme');var d=window.matchMedia('(prefers-color-scheme: dark)').matches;var t=s==='dark'||s==='light'?s:(d?'dark':'light');if(t==='dark')document.documentElement.classList.add('dark');}catch(e){}})();`;
 
-const GA_MEASUREMENT_ID = "G-3XWR6P376L";
+const GA_MEASUREMENT_ID = "G-TPZXF7TZ72";
 const GA_INIT = `window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
 gtag('js', new Date());
