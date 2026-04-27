@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* Tailwind v4 defaults `dark:` variants to prefers-color-scheme. We
+   manage theme via the `dark` class on <html> (toggled by ThemeToggle
+   + the inline THEME_BOOT script in layout.tsx), so re-bind dark:
+   utilities to that class. Otherwise `dark:` rules would fire from
+   OS preference and override the user's in-app light/dark choice. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Light (day) theme — default. */
 :root {
   --bg: #f7f6f3;
