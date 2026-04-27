@@ -16,7 +16,7 @@ const SITE_URL = "https://weisskrispies.github.io/drivers-guide";
 const SITE_TITLE =
   "Bay Area Driving Roads — Scenic Routes & Mountain Drives Near San Francisco";
 const SITE_DESCRIPTION =
-  "A curated guide to the best driving roads in the San Francisco Bay Area and Northern California. 37 scenic routes through the Santa Cruz Mountains, Marin Coast, Diablo Range, East Bay hills, Sierra passes, and Mendocino coastline — with elevation, distance, and difficulty for each.";
+  "A curated guide to the best driving roads in the San Francisco Bay Area and Northern California. 47 scenic routes through the Santa Cruz Mountains, Marin Coast, Diablo Range, East Bay hills, Napa, Big Sur, Sierra passes, and Mendocino coastline — with elevation, distance, and difficulty for each.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
