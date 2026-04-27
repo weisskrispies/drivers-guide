@@ -29,6 +29,14 @@ jobs:
 
       - run: npm ci
 
+      - name: Fetch real road geometry from OSRM
+        # Best-effort: if the public router is rate-limiting or down, the
+        # script swallows the error and the existing hand-crafted
+        # waypoints in data.ts ship instead. Build never fails because
+        # of OSRM.
+        run: npm run fetch-routes
+        continue-on-error: true
+
       - name: Build static export
         env:
           NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}

@@ -9,6 +9,7 @@ import { useCompletions, useHomeLocation, useTheme } from "@/lib/storage";
 import ProfileMenu from "./ProfileMenu";
 import RoadCard from "./RoadCard";
 import MobileCardCarousel from "./MobileCardCarousel";
+import IntroSection from "./IntroSection";
 import RoadFocused from "./RoadFocused";
 import ThemeToggle from "./ThemeToggle";
 import type { MapHandle } from "./RoadMap";
@@ -35,10 +36,15 @@ const DIFFICULTY_ORDER = {
 export default function RoadsApp() {
   const { home, setHome } = useHomeLocation();
   const { done, toggle, reset } = useCompletions();
-  const { theme } = useTheme();
 
   const [currentLocation, setCurrentLocation] = useState<LatLng | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
+
+  // The "auto" theme follows the user's local sunrise/sunset. Prefer the
+  // GPS fix; fall back to home; finally to the default location inside
+  // useTheme.
+  const themeLocation = currentLocation ?? home ?? null;
+  const { theme } = useTheme(themeLocation);
 
   const [sortBy, setSortBy] = useState<SortBy>("distance");
   const [showDone, setShowDone] = useState(true);
@@ -207,20 +213,7 @@ export default function RoadsApp() {
         </div>
       </header>
 
-      {/* Visible intro for SEO + first-load context. Compact on mobile so
-          it doesn't eat the map area. */}
-      <section className="relative z-10 shrink-0 border-b border-[var(--border)] bg-[var(--bg)]/85 backdrop-blur">
-        <div className="mx-auto w-full max-w-[1600px] px-4 py-2.5 sm:px-6 sm:py-3 lg:px-8">
-          <p className="text-[12px] leading-snug text-[var(--text-muted)] sm:text-[13px]">
-            A curated guide to the best driving roads in the San Francisco
-            Bay Area, from coastal Highway 1 and the redwood corridors of
-            the Santa Cruz Mountains to the switchbacks of Page Mill Road,
-            Mt. Hamilton, and the Sierra passes beyond. {ROADS.length}{" "}
-            scenic routes with elevation, distance, and difficulty for
-            each.
-          </p>
-        </div>
-      </section>
+      <IntroSection totalRoutes={ROADS.length} />
 
       {/* One RoadMap, two layouts via CSS:
           - Mobile: map fills the viewport, list collapses to a bottom-sheet
