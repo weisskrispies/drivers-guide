@@ -34,10 +34,10 @@ const DIFFICULTY_LABEL: Record<Road["difficulty"], string> = {
 };
 
 const DIFFICULTY_TONE: Record<Road["difficulty"], string> = {
-  easy: "bg-emerald-500/10 text-emerald-300 ring-emerald-500/30",
-  moderate: "bg-sky-500/10 text-sky-300 ring-sky-500/30",
-  spirited: "bg-amber-500/10 text-amber-300 ring-amber-500/30",
-  expert: "bg-red-500/10 text-red-300 ring-red-500/30",
+  easy: "bg-emerald-500/10 text-emerald-800 ring-emerald-600/30 dark:text-emerald-300 dark:ring-emerald-500/30",
+  moderate: "bg-sky-500/10 text-sky-800 ring-sky-600/30 dark:text-sky-300 dark:ring-sky-500/30",
+  spirited: "bg-amber-500/15 text-[#c2410c] ring-amber-600/30 dark:text-amber-300 dark:ring-amber-500/30",
+  expert: "bg-red-500/10 text-red-800 ring-red-600/30 dark:text-red-300 dark:ring-red-500/30",
 };
 
 const SURFACE_LABEL: Record<Road["surfaceQuality"], string> = {

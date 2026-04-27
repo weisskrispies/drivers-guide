@@ -28,7 +28,7 @@ const DIFFICULTY_LABEL: Record<Road["difficulty"], string> = {
 const DIFFICULTY_TONE: Record<Road["difficulty"], string> = {
   easy: "text-emerald-600 dark:text-emerald-400",
   moderate: "text-sky-600 dark:text-sky-400",
-  spirited: "text-[#9a3412] dark:text-amber-400",
+  spirited: "text-[#c2410c] dark:text-amber-400",
   expert: "text-red-600 dark:text-red-400",
 };
 
@@ -259,7 +259,7 @@ function Row({
         className={[
           "min-w-0 flex-1 truncate",
           warn
-            ? "font-semibold text-[#7c2d12] dark:text-amber-300"
+            ? "font-semibold text-[#c2410c] dark:text-amber-300"
             : "text-[var(--text-muted)]",
         ].join(" ")}
       >
