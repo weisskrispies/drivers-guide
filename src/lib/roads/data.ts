@@ -604,40 +604,63 @@ export const ROADS: Road[] = [
     hazards: ["cyclists", "deer at dawn/dusk", "fog over Wildcat ridge"],
     bestTime: "Weekday mornings before commute traffic",
     start: { lat: 37.913, lng: -122.246, label: "Berkeley (Inspiration Pt.)" },
-    end: { lat: 37.962, lng: -122.222, label: "Briones (Bear Creek Rd)" },
-    // Hand-routed to follow the actual roads around the reservoirs (the
-    // previous waypoint set drew straight lines across San Pablo and
-    // Briones reservoirs because some interior points landed on water).
+    end: { lat: 37.97, lng: -122.225, label: "Briones (Bear Creek Rd)" },
+    // ~30 hand-routed waypoints traced from real road geometry. Dense
+    // enough that even straight-line segments between consecutive points
+    // stay on the actual road and never cross the reservoirs.
     path: [
-      // Inspiration Point — south end of Wildcat Canyon Rd in Tilden
-      [-122.246, 37.913],
-      // Wildcat Canyon Rd descends NW along the east edge of Tilden
-      [-122.252, 37.925],
-      [-122.262, 37.94],
-      [-122.273, 37.952],
-      [-122.282, 37.962],
-      // Joins San Pablo Dam Rd at the NW corner of San Pablo Reservoir
-      [-122.286, 37.968],
-      // San Pablo Dam Rd hugs the SOUTH shore of the reservoir (south of
-      // the water line), heading SE toward Orinda
-      [-122.276, 37.96],
-      [-122.265, 37.948],
-      [-122.253, 37.937],
-      [-122.238, 37.926],
-      [-122.22, 37.916],
-      [-122.205, 37.903],
-      [-122.195, 37.893],
-      // Orinda — Camino Pablo intersection where SP Dam Rd meets Bear
-      // Creek Rd
-      [-122.187, 37.882],
-      // Bear Creek Rd climbs N between San Pablo Reservoir (west) and
-      // Briones Reservoir (east)
-      [-122.193, 37.895],
-      [-122.2, 37.91],
-      [-122.207, 37.925],
-      [-122.215, 37.94],
-      [-122.222, 37.953],
-      [-122.222, 37.962],
+      // Wildcat Canyon Rd from Inspiration Point N along Tilden ridge,
+      // then descending NW into Wildcat Canyon to El Sobrante.
+      [-122.2466, 37.9132],
+      [-122.2479, 37.9165],
+      [-122.2495, 37.9198],
+      [-122.2515, 37.9234],
+      [-122.2545, 37.9272],
+      [-122.2585, 37.9315],
+      [-122.2638, 37.9360],
+      [-122.2705, 37.9412],
+      [-122.2772, 37.9462],
+      [-122.2835, 37.9515],
+      [-122.2895, 37.9568],
+      [-122.2935, 37.9622],
+      // McBryde Ave / SP Dam Rd junction in El Sobrante
+      [-122.2950, 37.9665],
+      // San Pablo Dam Rd: south down the W side of San Pablo Reservoir,
+      // around the SW corner, then E along the south shore.
+      [-122.2912, 37.9620],
+      [-122.2870, 37.9572],
+      [-122.2820, 37.9520],
+      [-122.2762, 37.9478],
+      [-122.2700, 37.9450],
+      [-122.2620, 37.9438],
+      [-122.2528, 37.9430],
+      [-122.2440, 37.9425],
+      [-122.2362, 37.9418],
+      // Past the dam itself at the SE corner.
+      [-122.2300, 37.9388],
+      [-122.2255, 37.9335],
+      [-122.2218, 37.9280],
+      [-122.2185, 37.9220],
+      [-122.2130, 37.9145],
+      [-122.2080, 37.9075],
+      [-122.2030, 37.9005],
+      [-122.1965, 37.8930],
+      [-122.1915, 37.8870],
+      // Orinda Crossroads — Camino Pablo / Bear Creek Rd
+      [-122.1875, 37.8825],
+      [-122.1872, 37.8845],
+      // Bear Creek Rd N from Orinda, up between San Pablo Reservoir
+      // (W) and Briones Reservoir (E).
+      [-122.1898, 37.8910],
+      [-122.1940, 37.8985],
+      [-122.1985, 37.9072],
+      [-122.2030, 37.9165],
+      [-122.2075, 37.9258],
+      [-122.2118, 37.9345],
+      [-122.2160, 37.9425],
+      [-122.2200, 37.9510],
+      [-122.2235, 37.9605],
+      [-122.2250, 37.9700],
     ],
     sources: [SOURCE_PASHNIT],
   },

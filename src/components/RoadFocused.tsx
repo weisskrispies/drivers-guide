@@ -237,7 +237,7 @@ export default function RoadFocused({
           </div>
         </div>
 
-        <div className="flex items-center justify-between border-t border-[var(--border)] bg-[var(--bg)] px-5 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border)] bg-[var(--bg)] px-5 py-3">
           <button
             type="button"
             onClick={onClose}
@@ -245,32 +245,50 @@ export default function RoadFocused({
           >
             Close
           </button>
-          <button
-            type="button"
-            onClick={onToggleDone}
-            aria-pressed={done}
-            className={[
-              "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors",
-              done
-                ? "bg-[var(--surface-2)] text-[var(--text)] hover:bg-[var(--surface-3)]"
-                : "bg-[color:var(--accent)] text-white hover:bg-[color:var(--accent-hover)]",
-            ].join(" ")}
-          >
-            {done ? (
-              <>
-                <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                  <path
-                    fillRule="evenodd"
-                    d="M16.704 5.29a1 1 0 0 1 0 1.42l-8 8a1 1 0 0 1-1.414 0l-4-4a1 1 0 1 1 1.414-1.42L8 12.58l7.29-7.29a1 1 0 0 1 1.414 0Z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                Driven
-              </>
-            ) : (
-              "Mark as driven"
-            )}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href={`https://www.google.com/maps/dir/?api=1&destination=${road.start.lat},${road.start.lng}&travelmode=driving`}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Open driving directions to ${road.start.label}`}
+              className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border-strong)] bg-[var(--surface)] px-3.5 py-2 text-sm font-semibold text-[var(--text)] transition-colors hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+            >
+              <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                <path
+                  fillRule="evenodd"
+                  d="M3.105 2.288a.75.75 0 0 0-.826.95l1.414 4.926A1.5 1.5 0 0 0 5.135 9.25h6.115a.75.75 0 0 1 0 1.5H5.135a1.5 1.5 0 0 0-1.442 1.086l-1.414 4.926a.75.75 0 0 0 .826.95 28.897 28.897 0 0 0 15.293-7.155.75.75 0 0 0 0-1.114A28.897 28.897 0 0 0 3.105 2.288Z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              Route to start
+            </a>
+            <button
+              type="button"
+              onClick={onToggleDone}
+              aria-pressed={done}
+              className={[
+                "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors",
+                done
+                  ? "bg-[var(--surface-2)] text-[var(--text)] hover:bg-[var(--surface-3)]"
+                  : "bg-[color:var(--accent)] text-white hover:bg-[color:var(--accent-hover)]",
+              ].join(" ")}
+            >
+              {done ? (
+                <>
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                    <path
+                      fillRule="evenodd"
+                      d="M16.704 5.29a1 1 0 0 1 0 1.42l-8 8a1 1 0 0 1-1.414 0l-4-4a1 1 0 1 1 1.414-1.42L8 12.58l7.29-7.29a1 1 0 0 1 1.414 0Z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  Driven
+                </>
+              ) : (
+                "Mark as driven"
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>
