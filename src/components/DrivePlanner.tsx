@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { fetchRouteGeometry } from "@/lib/routeGeometry";
+import { fetchRouteGeometry, type RouteGeometry } from "@/lib/routeGeometry";
 import { formatMiles, formatMinutes } from "@/lib/geo";
 import {
   planDrive,
@@ -136,9 +136,7 @@ export default function DrivePlanner({
   const [loop, setLoop] = useState(true);
   const [plan, setPlan] = useState<DrivePlan | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [routeLine, setRouteLine] = useState<[number, number][] | null>(
-    null,
-  );
+  const [routeGeo, setRouteGeo] = useState<RouteGeometry | null>(null);
   const [geoStatus, setGeoStatus] = useState<
     "idle" | "loading" | "ok" | "fail"
   >("idle");
@@ -151,17 +149,17 @@ export default function DrivePlanner({
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!plan) {
-      setRouteLine(null);
+      setRouteGeo(null);
       setGeoStatus("idle");
       return;
     }
     let cancelled = false;
     setGeoStatus("loading");
-    setRouteLine(null);
-    fetchRouteGeometry(routePoints(plan)).then((coords) => {
+    setRouteGeo(null);
+    fetchRouteGeometry(routePoints(plan)).then((geo) => {
       if (cancelled) return;
-      setRouteLine(coords);
-      setGeoStatus(coords ? "ok" : "fail");
+      setRouteGeo(geo);
+      setGeoStatus(geo ? "ok" : "fail");
     });
     return () => {
       cancelled = true;
@@ -237,17 +235,25 @@ export default function DrivePlanner({
     );
   }
 
-  // Map pins: one numbered marker per road, in drive order.
+  // Map pins: one numbered marker per road, in drive order. Prefer the
+  // OSRM-snapped entry location so the pin sits exactly on the drawn
+  // route (routePoints order is: start, then entry,exit per road, …, so
+  // road k's entry is snapped index 1 + 2k). Fall back to the curated
+  // coordinate when snapped data is unavailable.
   const mapWaypoints = useMemo<Point[]>(() => {
     if (!plan) return [];
-    return plan.segments
-      .filter((s) => s.kind === "road" && s.path.length > 0)
-      .map((s) => ({
-        lng: s.path[0][0],
-        lat: s.path[0][1],
-        label: s.label,
-      }));
-  }, [plan]);
+    const roads = plan.segments.filter(
+      (s) => s.kind === "road" && s.path.length > 0,
+    );
+    const snapped = routeGeo?.snapped;
+    return roads.map((s, k) => {
+      const idx = 1 + 2 * k;
+      if (snapped && snapped.length > idx) {
+        return { lng: snapped[idx][0], lat: snapped[idx][1], label: s.label };
+      }
+      return { lng: s.path[0][0], lat: s.path[0][1], label: s.label };
+    });
+  }, [plan, routeGeo]);
 
   const exportData = useMemo(() => {
     if (!plan) return null;
@@ -260,7 +266,7 @@ export default function DrivePlanner({
       <main className="relative order-2 min-h-[320px] flex-1 overflow-hidden md:order-1 md:rounded-3xl md:border md:border-[var(--border)] md:bg-[var(--surface)] md:shadow-[var(--shadow-card)]">
         <PlannerMap
           waypoints={mapWaypoints}
-          routeLine={routeLine}
+          routeLine={routeGeo?.line ?? null}
           start={start}
           stops={stops}
           theme={theme}
