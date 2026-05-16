@@ -216,14 +216,6 @@ export default function DrivePlanner({
       }));
   }, [plan]);
 
-  // Real curated-road geometry to draw (no connector lines).
-  const roadPaths = useMemo<[number, number][][]>(() => {
-    if (!plan) return [];
-    return plan.segments
-      .filter((s) => s.kind === "road" && s.path.length >= 2)
-      .map((s) => s.path as [number, number][]);
-  }, [plan]);
-
   const exportData = useMemo(() => {
     if (!plan) return null;
     const pts = routePoints(plan);
@@ -235,7 +227,6 @@ export default function DrivePlanner({
       <main className="relative order-2 min-h-[320px] flex-1 overflow-hidden md:order-1 md:rounded-3xl md:border md:border-[var(--border)] md:bg-[var(--surface)] md:shadow-[var(--shadow-card)]">
         <PlannerMap
           waypoints={mapWaypoints}
-          roadPaths={roadPaths}
           start={start}
           stops={stops}
           theme={theme}

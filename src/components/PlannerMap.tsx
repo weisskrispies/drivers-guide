@@ -1,11 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import maplibregl, {
-  type Map as MlMap,
-  type GeoJSONSource,
-  type Marker,
-} from "maplibre-gl";
+import maplibregl, { type Map as MlMap, type Marker } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { Theme } from "@/lib/storage";
 
@@ -14,11 +10,10 @@ const ACCENT = "#fc5200";
 type Point = { lat: number; lng: number; label?: string };
 
 type Props = {
-  /** Ordered road waypoints to pin (in drive order). */
+  /** Ordered road waypoints, pinned in drive order. No lines are drawn —
+   *  the in-app map is for orientation; Google Maps export handles the
+   *  actual turn-by-turn route. */
   waypoints: Point[];
-  /** Each curated road's real geometry, drawn as a line. Connectors are
-   *  intentionally NOT passed — they were inaccurate straight lines. */
-  roadPaths: [number, number][][];
   start: Point | null;
   stops: Point[];
   theme: Theme;
@@ -60,7 +55,6 @@ function dot(bg: string, text: string, label: string) {
 
 export default function PlannerMap({
   waypoints,
-  roadPaths,
   start,
   stops,
   theme,
@@ -102,8 +96,6 @@ export default function PlannerMap({
     };
   }, []);
 
-  // Re-apply the basemap on theme change, then redraw everything once the
-  // new style is ready (setStyle drops custom sources/layers/markers).
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -116,45 +108,6 @@ export default function PlannerMap({
     if (!map) return;
 
     const draw = () => {
-      // Road geometry (real curated shapes; no connector lines).
-      const fc = {
-        type: "FeatureCollection" as const,
-        features: roadPaths
-          .filter((p) => p.length >= 2)
-          .map((coords) => ({
-            type: "Feature" as const,
-            properties: {},
-            geometry: { type: "LineString" as const, coordinates: coords },
-          })),
-      };
-      const existing = map.getSource("plan-roads") as
-        | GeoJSONSource
-        | undefined;
-      if (existing) {
-        existing.setData(fc);
-      } else {
-        map.addSource("plan-roads", { type: "geojson", data: fc });
-        map.addLayer({
-          id: "plan-roads-casing",
-          type: "line",
-          source: "plan-roads",
-          paint: {
-            "line-color": theme === "dark" ? "#000000" : "#ffffff",
-            "line-width": 7,
-            "line-opacity": 0.8,
-          },
-          layout: { "line-cap": "round", "line-join": "round" },
-        });
-        map.addLayer({
-          id: "plan-roads-line",
-          type: "line",
-          source: "plan-roads",
-          paint: { "line-color": ACCENT, "line-width": 4 },
-          layout: { "line-cap": "round", "line-join": "round" },
-        });
-      }
-
-      // Markers.
       markersRef.current.forEach((m) => m.remove());
       markersRef.current = [];
 
@@ -205,9 +158,7 @@ export default function PlannerMap({
         );
       });
 
-      // Fit to road geometry + all markers.
       const pts: [number, number][] = [];
-      for (const path of roadPaths) for (const c of path) pts.push(c);
       if (start) pts.push([start.lng, start.lat]);
       for (const w of waypoints) pts.push([w.lng, w.lat]);
       for (const s of stops) pts.push([s.lng, s.lat]);
@@ -221,7 +172,7 @@ export default function PlannerMap({
             [Math.min(...lngs), Math.min(...lats)],
             [Math.max(...lngs), Math.max(...lats)],
           ],
-          { padding: 70, maxZoom: 13, duration: 600 },
+          { padding: 70, maxZoom: 12, duration: 600 },
         );
       }
     };
@@ -229,7 +180,7 @@ export default function PlannerMap({
     drawRef.current = draw;
     if (map.isStyleLoaded()) draw();
     else map.once("load", draw);
-  }, [roadPaths, waypoints, start, stops, theme]);
+  }, [waypoints, start, stops, theme]);
 
   return <div ref={containerRef} className="h-full w-full" />;
 }
