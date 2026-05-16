@@ -13,9 +13,11 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
-  # Supersede queued/in-progress runs so the latest commit wins fast,
-  # instead of waiting behind a backlog.
+  # Per-branch lane so runs on different branches don't cancel each
+  # other (the github-pages environment already serializes the actual
+  # deploy). cancel-in-progress supersedes only older runs of the SAME
+  # branch.
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
