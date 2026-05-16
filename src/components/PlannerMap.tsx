@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import maplibregl, { type Map as MlMap, type Marker } from "maplibre-gl";
+import maplibregl, {
+  type Map as MlMap,
+  type GeoJSONSource,
+  type Marker,
+} from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { Theme } from "@/lib/storage";
 
@@ -14,6 +18,9 @@ type Props = {
    *  the in-app map is for orientation; Google Maps export handles the
    *  actual turn-by-turn route. */
   waypoints: Point[];
+  /** True road-following polyline from the routing engine, or null to
+   *  draw nothing (pins only). Never a coarse/straight approximation. */
+  routeLine?: [number, number][] | null;
   start: Point | null;
   stops: Point[];
   theme: Theme;
@@ -55,6 +62,7 @@ function dot(bg: string, text: string, label: string) {
 
 export default function PlannerMap({
   waypoints,
+  routeLine,
   start,
   stops,
   theme,
@@ -108,6 +116,52 @@ export default function PlannerMap({
     if (!map) return;
 
     const draw = () => {
+      // Real road-following route line, or nothing at all. This is the
+      // only line ever drawn — never a coarse or straight approximation.
+      const line =
+        routeLine && routeLine.length >= 2 ? routeLine : null;
+      const fc = {
+        type: "FeatureCollection" as const,
+        features: line
+          ? [
+              {
+                type: "Feature" as const,
+                properties: {},
+                geometry: {
+                  type: "LineString" as const,
+                  coordinates: line,
+                },
+              },
+            ]
+          : [],
+      };
+      const src = map.getSource("route-geom") as
+        | GeoJSONSource
+        | undefined;
+      if (src) {
+        src.setData(fc);
+      } else {
+        map.addSource("route-geom", { type: "geojson", data: fc });
+        map.addLayer({
+          id: "route-geom-casing",
+          type: "line",
+          source: "route-geom",
+          paint: {
+            "line-color": theme === "dark" ? "#000000" : "#ffffff",
+            "line-width": 8,
+            "line-opacity": 0.7,
+          },
+          layout: { "line-cap": "round", "line-join": "round" },
+        });
+        map.addLayer({
+          id: "route-geom-line",
+          type: "line",
+          source: "route-geom",
+          paint: { "line-color": ACCENT, "line-width": 5 },
+          layout: { "line-cap": "round", "line-join": "round" },
+        });
+      }
+
       markersRef.current.forEach((m) => m.remove());
       markersRef.current = [];
 
@@ -162,6 +216,7 @@ export default function PlannerMap({
       if (start) pts.push([start.lng, start.lat]);
       for (const w of waypoints) pts.push([w.lng, w.lat]);
       for (const s of stops) pts.push([s.lng, s.lat]);
+      if (line) for (const c of line) pts.push(c);
       if (pts.length === 1) {
         map.easeTo({ center: pts[0], zoom: 11, duration: 500 });
       } else if (pts.length > 1) {
@@ -180,7 +235,7 @@ export default function PlannerMap({
     drawRef.current = draw;
     if (map.isStyleLoaded()) draw();
     else map.once("load", draw);
-  }, [waypoints, start, stops, theme]);
+  }, [waypoints, routeLine, start, stops, theme]);
 
   return <div ref={containerRef} className="h-full w-full" />;
 }

@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
+import { fetchRouteGeometry } from "@/lib/routeGeometry";
 import { formatMiles, formatMinutes } from "@/lib/geo";
 import {
   planDrive,
@@ -135,6 +136,38 @@ export default function DrivePlanner({
   const [loop, setLoop] = useState(true);
   const [plan, setPlan] = useState<DrivePlan | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [routeLine, setRouteLine] = useState<[number, number][] | null>(
+    null,
+  );
+  const [geoStatus, setGeoStatus] = useState<
+    "idle" | "loading" | "ok" | "fail"
+  >("idle");
+
+  // When a plan is produced, ask the routing engine (in the browser, which
+  // has internet) for the true road geometry. On ANY failure routeLine
+  // stays null and the map shows pins only — never a wrong line.
+  // Setting loading/result state from this effect is the intended
+  // data-fetching pattern, so the synchronous-setState rule doesn't apply.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (!plan) {
+      setRouteLine(null);
+      setGeoStatus("idle");
+      return;
+    }
+    let cancelled = false;
+    setGeoStatus("loading");
+    setRouteLine(null);
+    fetchRouteGeometry(routePoints(plan)).then((coords) => {
+      if (cancelled) return;
+      setRouteLine(coords);
+      setGeoStatus(coords ? "ok" : "fail");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [plan]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   function handlePick(p: { lat: number; lng: number }) {
     if (addingStops) {
@@ -227,6 +260,7 @@ export default function DrivePlanner({
       <main className="relative order-2 min-h-[320px] flex-1 overflow-hidden md:order-1 md:rounded-3xl md:border md:border-[var(--border)] md:bg-[var(--surface)] md:shadow-[var(--shadow-card)]">
         <PlannerMap
           waypoints={mapWaypoints}
+          routeLine={routeLine}
           start={start}
           stops={stops}
           theme={theme}
@@ -421,6 +455,16 @@ export default function DrivePlanner({
                 {formatMinutes(plan.totalDurationMinutes)}
               </span>
             </div>
+
+            <p className="mt-1 text-[11px] text-[var(--text-dim)]">
+              {geoStatus === "loading"
+                ? "Plotting the real route on the map…"
+                : geoStatus === "ok"
+                  ? "Route drawn from live road data."
+                  : geoStatus === "fail"
+                    ? "Couldn’t fetch live geometry right now — showing pins. The Google Maps export below is exact."
+                    : ""}
+            </p>
 
             {/* Export is the headline action — accurate turn-by-turn is
                 handed off to Google Maps with every waypoint in order. */}
