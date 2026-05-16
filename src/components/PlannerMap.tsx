@@ -167,8 +167,10 @@ export default function PlannerMap({
 
       if (start) {
         const el = dot(ACCENT, "#fff", start.label ?? "Start");
+        // A start/flag glyph — deliberately NOT a house, so the planner
+        // start marker is never confused with the saved-Home marker.
         el.innerHTML =
-          '<svg viewBox="0 0 20 20" fill="currentColor" style="width:13px;height:13px"><path d="M10.707 2.293a1 1 0 0 0-1.414 0l-7 7A1 1 0 0 0 3 11h1v6a1 1 0 0 0 1 1h3v-4a2 2 0 1 1 4 0v4h3a1 1 0 0 0 1-1v-6h1a1 1 0 0 0 .707-1.707l-7-7Z"/></svg>';
+          '<svg viewBox="0 0 20 20" fill="currentColor" style="width:13px;height:13px"><path d="M5 2a1 1 0 0 1 1 1v.5l8.4 1.68a1 1 0 0 1 .35 1.8L12 9l2.75 2.02a1 1 0 0 1-.35 1.8L6 14.5V18a1 1 0 1 1-2 0V3a1 1 0 0 1 1-1Z"/></svg>';
         markersRef.current.push(
           new maplibregl.Marker({ element: el, anchor: "center" })
             .setLngLat([start.lng, start.lat])

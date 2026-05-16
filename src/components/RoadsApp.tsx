@@ -243,6 +243,7 @@ export default function RoadsApp() {
               doneCount={doneCount}
               total={ROADS.length}
               home={home}
+              currentLocation={currentLocation}
               onSaveHome={setHome}
               onRequestGeo={requestGeo}
               usingGps={!!currentLocation}

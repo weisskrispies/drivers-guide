@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTheme, type HomeLocation } from "@/lib/storage";
+import type { LatLng } from "@/lib/roads/types";
 import { levelForCount } from "@/lib/gamification";
 import { signOut, useAuth, useGoogleSignInButton } from "@/lib/auth";
 
@@ -11,6 +12,7 @@ type Props = {
   doneCount: number;
   total: number;
   home: HomeLocation | null;
+  currentLocation: LatLng | null;
   onSaveHome: (next: HomeLocation | null) => void;
   onRequestGeo: () => void;
   usingGps: boolean;
@@ -37,6 +39,7 @@ export default function ProfileMenu({
   doneCount,
   total,
   home,
+  currentLocation,
   onSaveHome,
   onRequestGeo,
   usingGps,
@@ -246,6 +249,26 @@ export default function ProfileMenu({
             </button>
             {geoError && (
               <p className="mt-1 text-[11px] text-red-400">{geoError}</p>
+            )}
+
+            {currentLocation ? (
+              <button
+                type="button"
+                onClick={() =>
+                  onSaveHome({
+                    label: "My location",
+                    lat: currentLocation.lat,
+                    lng: currentLocation.lng,
+                  })
+                }
+                className="mt-2 block w-full rounded-full bg-[color:var(--accent)] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[color:var(--accent-hover)]"
+              >
+                Set Home to my current location
+              </button>
+            ) : (
+              <p className="mt-1.5 text-[11px] text-[var(--text-dim)]">
+                Tap “Use my location”, then come back to save it as Home.
+              </p>
             )}
 
             <div className="mt-3">
