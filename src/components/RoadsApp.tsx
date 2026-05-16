@@ -269,7 +269,6 @@ export default function RoadsApp() {
           home={home}
           currentLocation={currentLocation}
           onRequestGeo={requestGeo}
-          usingGps={!!currentLocation}
           theme={theme}
         />
       ) : (

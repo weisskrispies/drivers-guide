@@ -20,15 +20,6 @@ const PlannerMap = dynamic(() => import("./PlannerMap"), {
   ),
 });
 
-const PRESETS: PlannerStart[] = [
-  { label: "San Francisco", lat: 37.7749, lng: -122.4194 },
-  { label: "Oakland", lat: 37.8044, lng: -122.2712 },
-  { label: "Berkeley", lat: 37.8715, lng: -122.273 },
-  { label: "Palo Alto", lat: 37.4419, lng: -122.143 },
-  { label: "San Jose", lat: 37.3382, lng: -121.8863 },
-  { label: "Mill Valley", lat: 37.906, lng: -122.545 },
-];
-
 const DIFFICULTIES: Difficulty[] = ["easy", "moderate", "spirited", "expert"];
 
 type Point = { lat: number; lng: number; label?: string };
@@ -38,7 +29,6 @@ type Props = {
   home: HomeLocation | null;
   currentLocation: LatLng | null;
   onRequestGeo: () => void;
-  usingGps: boolean;
   theme: Theme;
 };
 
@@ -115,17 +105,27 @@ export default function DrivePlanner({
   home,
   currentLocation,
   onRequestGeo,
-  usingGps,
   theme,
 }: Props) {
-  // Effective start: an explicit pick wins; otherwise the saved Home
-  // (which hydrates from localStorage after mount, so it's picked up
-  // automatically without a state-sync effect).
-  const [picked, setPicked] = useState<PlannerStart | null>(null);
-  const start = picked ?? home ?? null;
-  const pickStart = (s: PlannerStart) => setPicked(s);
-  const [pickMode, setPickMode] = useState<"start" | "stop">("start");
+  // Start is exactly one of: GPS, your saved Home, or a specific point
+  // (typed lat,lng or tapped on the map). No competing presets.
+  const [startMode, setStartMode] = useState<"gps" | "home" | "custom">(
+    "home",
+  );
+  const [customPoint, setCustomPoint] = useState<PlannerStart | null>(null);
+  const [customInput, setCustomInput] = useState("");
+  const [customError, setCustomError] = useState<string | null>(null);
+  const [addingStops, setAddingStops] = useState(false);
   const [stops, setStops] = useState<PlannerStart[]>([]);
+
+  const start: PlannerStart | null =
+    startMode === "gps"
+      ? currentLocation
+        ? { ...currentLocation, label: "My location" }
+        : null
+      : startMode === "home"
+        ? home ?? null
+        : customPoint;
   const [targetKind, setTargetKind] = useState<"duration" | "distance">(
     "duration",
   );
@@ -137,9 +137,38 @@ export default function DrivePlanner({
   const [error, setError] = useState<string | null>(null);
 
   function handlePick(p: { lat: number; lng: number }) {
-    if (pickMode === "start") pickStart({ ...p, label: "Picked point" });
-    else
+    if (addingStops) {
       setStops((s) => [...s, { ...p, label: `Stop ${s.length + 1}` }]);
+    } else if (startMode === "custom") {
+      setCustomPoint({ ...p, label: "Tapped point" });
+      setCustomInput(`${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`);
+      setCustomError(null);
+    }
+    // In GPS or Home mode, a stray map tap does nothing — it won't
+    // hijack your start.
+  }
+
+  function applyCustomInput() {
+    const parts = customInput
+      .split(/[,\s]+/)
+      .map((x) => x.trim())
+      .filter(Boolean);
+    const lat = Number(parts[0]);
+    const lng = Number(parts[1]);
+    if (
+      parts.length !== 2 ||
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng) ||
+      lat < -90 ||
+      lat > 90 ||
+      lng < -180 ||
+      lng > 180
+    ) {
+      setCustomError("Enter a valid “lat, lng”.");
+      return;
+    }
+    setCustomError(null);
+    setCustomPoint({ lat, lng, label: "Custom point" });
   }
 
   function run() {
@@ -212,12 +241,14 @@ export default function DrivePlanner({
           theme={theme}
           onPick={handlePick}
         />
-        <div className="pointer-events-none absolute left-3 top-3 rounded-full bg-[var(--surface)]/90 px-3 py-1 text-[11px] text-[var(--text-muted)] shadow">
-          Tap the map to set the{" "}
-          <span className="font-semibold text-[color:var(--accent)]">
-            {pickMode}
-          </span>
-        </div>
+        {(addingStops || startMode === "custom") && (
+          <div className="pointer-events-none absolute left-3 top-3 rounded-full bg-[var(--surface)]/90 px-3 py-1 text-[11px] text-[var(--text-muted)] shadow">
+            Tap the map to{" "}
+            <span className="font-semibold text-[color:var(--accent)]">
+              {addingStops ? "add a stop" : "set your start"}
+            </span>
+          </div>
+        )}
       </main>
 
       <aside className="order-1 flex w-full shrink-0 flex-col gap-4 overflow-y-auto md:order-2 md:w-[400px] lg:w-[440px]">
@@ -225,56 +256,69 @@ export default function DrivePlanner({
           <h3 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-dim)]">
             Start
           </h3>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            <button
-              type="button"
-              onClick={() => {
-                if (currentLocation)
-                  pickStart({ ...currentLocation, label: "My location" });
-                else onRequestGeo();
-              }}
-              className={`rounded-full border px-3 py-1 text-xs ${
-                usingGps && start?.label === "My location"
-                  ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[color:var(--accent)]"
-                  : "border-[var(--border)] text-[var(--text)] hover:bg-[var(--surface-2)]"
-              }`}
-            >
-              {usingGps ? "My location" : "Use GPS"}
-            </button>
-            {home && (
+          <div className="mt-2 grid grid-cols-3 gap-1.5">
+            {(
+              [
+                ["gps", "My location"],
+                ["home", "Home"],
+                ["custom", "Specific point"],
+              ] as const
+            ).map(([mode, label]) => (
               <button
+                key={mode}
                 type="button"
-                onClick={() => pickStart(home)}
-                className={`rounded-full border px-3 py-1 text-xs ${
-                  start?.label === home.label
+                onClick={() => {
+                  setStartMode(mode);
+                  if (mode === "gps" && !currentLocation) onRequestGeo();
+                }}
+                className={`rounded-full border px-2 py-1.5 text-xs ${
+                  startMode === mode
                     ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[color:var(--accent)]"
                     : "border-[var(--border)] text-[var(--text)] hover:bg-[var(--surface-2)]"
                 }`}
               >
-                Home
-              </button>
-            )}
-            {PRESETS.map((p) => (
-              <button
-                key={p.label}
-                type="button"
-                onClick={() => pickStart(p)}
-                className={`rounded-full border px-3 py-1 text-xs ${
-                  start?.lat === p.lat && start?.lng === p.lng
-                    ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[color:var(--accent)]"
-                    : "border-[var(--border)] text-[var(--text)] hover:bg-[var(--surface-2)]"
-                }`}
-              >
-                {p.label}
+                {label}
               </button>
             ))}
           </div>
+
+          {startMode === "custom" && (
+            <div className="mt-2">
+              <div className="flex gap-1.5">
+                <input
+                  type="text"
+                  value={customInput}
+                  onChange={(e) => setCustomInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") applyCustomInput();
+                  }}
+                  placeholder="lat, lng — or tap the map"
+                  className="w-full rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-xs text-[var(--text)] placeholder:text-[var(--text-dim)] focus:border-[var(--accent)] focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={applyCustomInput}
+                  className="rounded-md bg-[color:var(--accent)] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[color:var(--accent-hover)]"
+                >
+                  Set
+                </button>
+              </div>
+              {customError && (
+                <p className="mt-1 text-[11px] text-red-500">{customError}</p>
+              )}
+            </div>
+          )}
+
           <p className="mt-2 text-[11px] text-[var(--text-dim)]">
             {start
               ? `${start.label ?? "Start"} · ${start.lat.toFixed(
-                  3,
-                )}, ${start.lng.toFixed(3)}`
-              : "No start chosen — or tap the map."}
+                  4,
+                )}, ${start.lng.toFixed(4)}`
+              : startMode === "gps"
+                ? "Waiting for location permission…"
+                : startMode === "home"
+                  ? "No Home saved — set one from the profile menu, or use a specific point."
+                  : "Enter a lat, lng or tap the map."}
           </p>
 
           <h3 className="mt-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-dim)]">
@@ -340,14 +384,14 @@ export default function DrivePlanner({
           <div className="mt-4 flex items-center gap-2">
             <button
               type="button"
-              onClick={() =>
-                setPickMode((m) => (m === "start" ? "stop" : "start"))
-              }
-              className="rounded-md border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--text)] hover:bg-[var(--surface-2)]"
+              onClick={() => setAddingStops((v) => !v)}
+              className={`rounded-md border px-3 py-1.5 text-xs ${
+                addingStops
+                  ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[color:var(--accent)]"
+                  : "border-[var(--border)] text-[var(--text)] hover:bg-[var(--surface-2)]"
+              }`}
             >
-              {pickMode === "stop"
-                ? "Tapping adds stops ✓"
-                : "Add stops by map tap"}
+              {addingStops ? "Tapping adds stops ✓" : "Add stops by map tap"}
             </button>
             {stops.length > 0 && (
               <button
