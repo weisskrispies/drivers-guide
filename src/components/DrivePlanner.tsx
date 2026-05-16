@@ -118,9 +118,12 @@ export default function DrivePlanner({
   usingGps,
   theme,
 }: Props) {
-  const [start, setStart] = useState<PlannerStart | null>(
-    home ?? PRESETS[1],
-  );
+  // Effective start: an explicit pick wins; otherwise the saved Home
+  // (which hydrates from localStorage after mount, so it's picked up
+  // automatically without a state-sync effect).
+  const [picked, setPicked] = useState<PlannerStart | null>(null);
+  const start = picked ?? home ?? null;
+  const pickStart = (s: PlannerStart) => setPicked(s);
   const [pickMode, setPickMode] = useState<"start" | "stop">("start");
   const [stops, setStops] = useState<PlannerStart[]>([]);
   const [targetKind, setTargetKind] = useState<"duration" | "distance">(
@@ -134,7 +137,7 @@ export default function DrivePlanner({
   const [error, setError] = useState<string | null>(null);
 
   function handlePick(p: { lat: number; lng: number }) {
-    if (pickMode === "start") setStart({ ...p, label: "Picked point" });
+    if (pickMode === "start") pickStart({ ...p, label: "Picked point" });
     else
       setStops((s) => [...s, { ...p, label: `Stop ${s.length + 1}` }]);
   }
@@ -218,7 +221,7 @@ export default function DrivePlanner({
               type="button"
               onClick={() => {
                 if (currentLocation)
-                  setStart({ ...currentLocation, label: "My location" });
+                  pickStart({ ...currentLocation, label: "My location" });
                 else onRequestGeo();
               }}
               className={`rounded-full border px-3 py-1 text-xs ${
@@ -232,7 +235,7 @@ export default function DrivePlanner({
             {home && (
               <button
                 type="button"
-                onClick={() => setStart(home)}
+                onClick={() => pickStart(home)}
                 className={`rounded-full border px-3 py-1 text-xs ${
                   start?.label === home.label
                     ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[color:var(--accent)]"
@@ -246,7 +249,7 @@ export default function DrivePlanner({
               <button
                 key={p.label}
                 type="button"
-                onClick={() => setStart(p)}
+                onClick={() => pickStart(p)}
                 className={`rounded-full border px-3 py-1 text-xs ${
                   start?.lat === p.lat && start?.lng === p.lng
                     ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[color:var(--accent)]"
