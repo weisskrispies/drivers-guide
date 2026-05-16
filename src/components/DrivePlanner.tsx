@@ -31,6 +31,8 @@ const PRESETS: PlannerStart[] = [
 
 const DIFFICULTIES: Difficulty[] = ["easy", "moderate", "spirited", "expert"];
 
+type Point = { lat: number; lng: number; label?: string };
+
 type Props = {
   roads: Road[];
   home: HomeLocation | null;
@@ -47,23 +49,65 @@ function nextSaturday9am(): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T09:00`;
 }
 
-function mapsLinks(plan: DrivePlan) {
-  const o = `${plan.start.lat},${plan.start.lng}`;
-  const entries = plan.segments
-    .filter((s) => s.kind === "road" && s.path.length > 0)
-    .map((s) => s.path[0]);
-  const last = plan.segments[plan.segments.length - 1];
-  const lastC = last?.path[last.path.length - 1];
-  const dest = plan.loop ? o : lastC ? `${lastC[1]},${lastC[0]}` : o;
-  const wpArr = entries.slice(0, 9).map(([lng, lat]) => `${lat},${lng}`);
-  const google =
-    `https://www.google.com/maps/dir/?api=1&origin=${o}&destination=${dest}` +
-    (wpArr.length
-      ? `&waypoints=${encodeURIComponent(wpArr.join("|"))}`
-      : "") +
-    `&travelmode=driving`;
-  const apple = `https://maps.apple.com/?saddr=${o}&daddr=${dest}&dirflg=d`;
-  return { google, apple };
+/** Ordered route points: start, each road's entry+exit (so Maps routes
+ *  along the road, not just to it), stops, then back to start on a loop. */
+function routePoints(plan: DrivePlan): Point[] {
+  const pts: Point[] = [
+    { ...plan.start, label: plan.start.label ?? "Start" },
+  ];
+  for (const s of plan.segments) {
+    if (s.kind === "road" && s.path.length >= 2) {
+      const a = s.path[0];
+      const b = s.path[s.path.length - 1];
+      pts.push({ lng: a[0], lat: a[1], label: `${s.label} (start)` });
+      pts.push({ lng: b[0], lat: b[1], label: `${s.label} (end)` });
+    } else if (s.kind === "stop" && s.path.length >= 1) {
+      const c = s.path[s.path.length - 1];
+      pts.push({ lng: c[0], lat: c[1], label: s.label });
+    }
+  }
+  if (plan.loop) pts.push({ ...plan.start, label: "Back to start" });
+  return pts;
+}
+
+const fmt = (p: Point) => `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`;
+
+/** Google Maps web tops out around 10 locations per directions URL, so
+ *  split long routes into consecutive legs (sharing the boundary point)
+ *  rather than silently dropping waypoints. */
+function googleLegs(points: Point[]): string[] {
+  const MAX = 10;
+  if (points.length <= MAX) {
+    return [
+      `https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=${fmt(
+        points[0],
+      )}&destination=${fmt(points[points.length - 1])}` +
+        (points.length > 2
+          ? `&waypoints=${points
+              .slice(1, -1)
+              .map(fmt)
+              .map(encodeURIComponent)
+              .join("|")}`
+          : ""),
+    ];
+  }
+  const legs: string[] = [];
+  for (let i = 0; i < points.length - 1; i += MAX - 1) {
+    const slice = points.slice(i, i + MAX);
+    legs.push(
+      `https://www.google.com/maps/dir/${slice.map(fmt).join("/")}/?travelmode=driving`,
+    );
+  }
+  return legs;
+}
+
+function appleLink(points: Point[]): string {
+  // Apple Maps chains destinations with "+to:".
+  const daddr = points
+    .slice(1)
+    .map(fmt)
+    .join("+to:");
+  return `https://maps.apple.com/?saddr=${fmt(points[0])}&daddr=${daddr}&dirflg=d`;
 }
 
 export default function DrivePlanner({
@@ -89,26 +133,22 @@ export default function DrivePlanner({
   const [plan, setPlan] = useState<DrivePlan | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const effectiveStart = start;
-
   function handlePick(p: { lat: number; lng: number }) {
-    if (pickMode === "start") {
-      setStart({ ...p, label: "Picked point" });
-    } else {
+    if (pickMode === "start") setStart({ ...p, label: "Picked point" });
+    else
       setStops((s) => [...s, { ...p, label: `Stop ${s.length + 1}` }]);
-    }
   }
 
   function run() {
-    if (!effectiveStart) {
+    if (!start) {
       setError("Choose a start point.");
       return;
     }
-    if (
+    const bad =
       targetKind === "duration"
         ? targetValue < 15 || targetValue > 600
-        : targetValue < 5 || targetValue > 400
-    ) {
+        : targetValue < 5 || targetValue > 400;
+    if (bad) {
       setError(
         targetKind === "duration"
           ? "Duration must be 15–600 minutes."
@@ -119,7 +159,7 @@ export default function DrivePlanner({
     setError(null);
     setPlan(
       planDrive(roads, {
-        start: effectiveStart,
+        start,
         target:
           targetKind === "duration"
             ? { kind: "duration", minutes: targetValue }
@@ -132,15 +172,30 @@ export default function DrivePlanner({
     );
   }
 
-  const mapSegments = useMemo(() => plan?.segments ?? [], [plan]);
-  const links = plan ? mapsLinks(plan) : null;
+  // Map pins: one numbered marker per road, in drive order.
+  const mapWaypoints = useMemo<Point[]>(() => {
+    if (!plan) return [];
+    return plan.segments
+      .filter((s) => s.kind === "road" && s.path.length > 0)
+      .map((s) => ({
+        lng: s.path[0][0],
+        lat: s.path[0][1],
+        label: s.label,
+      }));
+  }, [plan]);
+
+  const exportData = useMemo(() => {
+    if (!plan) return null;
+    const pts = routePoints(plan);
+    return { legs: googleLegs(pts), apple: appleLink(pts), count: pts.length };
+  }, [plan]);
 
   return (
     <div className="mx-auto flex min-h-0 w-full flex-1 flex-col md:max-w-[1600px] md:flex-row md:gap-6 md:px-4 md:py-4 lg:gap-8 lg:px-8 lg:py-6">
       <main className="relative order-2 min-h-[320px] flex-1 overflow-hidden md:order-1 md:rounded-3xl md:border md:border-[var(--border)] md:bg-[var(--surface)] md:shadow-[var(--shadow-card)]">
         <PlannerMap
-          segments={mapSegments}
-          start={effectiveStart}
+          waypoints={mapWaypoints}
+          start={start}
           stops={stops}
           theme={theme}
           onPick={handlePick}
@@ -155,7 +210,6 @@ export default function DrivePlanner({
 
       <aside className="order-1 flex w-full shrink-0 flex-col gap-4 overflow-y-auto md:order-2 md:w-[400px] lg:w-[440px]">
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
-          {/* Start */}
           <h3 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-dim)]">
             Start
           </h3>
@@ -204,14 +258,13 @@ export default function DrivePlanner({
             ))}
           </div>
           <p className="mt-2 text-[11px] text-[var(--text-dim)]">
-            {effectiveStart
-              ? `${effectiveStart.label ?? "Start"} · ${effectiveStart.lat.toFixed(
+            {start
+              ? `${start.label ?? "Start"} · ${start.lat.toFixed(
                   3,
-                )}, ${effectiveStart.lng.toFixed(3)}`
+                )}, ${start.lng.toFixed(3)}`
               : "No start chosen — or tap the map."}
           </p>
 
-          {/* Target */}
           <h3 className="mt-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-dim)]">
             How long
           </h3>
@@ -234,7 +287,6 @@ export default function DrivePlanner({
             />
           </div>
 
-          {/* When */}
           <h3 className="mt-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-dim)]">
             When
           </h3>
@@ -245,7 +297,6 @@ export default function DrivePlanner({
             className="mt-2 w-full rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-xs text-[var(--text)] focus:border-[var(--accent)] focus:outline-none"
           />
 
-          {/* Limits */}
           <div className="mt-4 flex items-center justify-between">
             <span className="text-[12px] text-[var(--text-muted)]">
               Max difficulty
@@ -274,7 +325,6 @@ export default function DrivePlanner({
             />
           </label>
 
-          {/* Stops */}
           <div className="mt-4 flex items-center gap-2">
             <button
               type="button"
@@ -325,8 +375,53 @@ export default function DrivePlanner({
               </span>
             </div>
 
+            {/* Export is the headline action — accurate turn-by-turn is
+                handed off to Google Maps with every waypoint in order. */}
+            {exportData && (
+              <div className="mt-3">
+                {exportData.legs.length === 1 ? (
+                  <a
+                    href={exportData.legs[0]}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full rounded-full bg-[color:var(--accent)] px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-[color:var(--accent-hover)]"
+                  >
+                    Open route in Google Maps →
+                  </a>
+                ) : (
+                  <div>
+                    <p className="mb-1.5 text-[11px] text-[var(--text-muted)]">
+                      Long route — opens as {exportData.legs.length}{" "}
+                      consecutive legs so every waypoint is kept:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {exportData.legs.map((href, i) => (
+                        <a
+                          key={i}
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rounded-full bg-[color:var(--accent)] px-4 py-2 text-sm font-semibold text-white hover:bg-[color:var(--accent-hover)]"
+                        >
+                          Google Maps · Leg {i + 1}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <a
+                  href={exportData.apple}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 block w-full rounded-full border border-[var(--border)] px-4 py-2 text-center text-xs font-medium text-[var(--text)] hover:bg-[var(--surface-2)]"
+                >
+                  Open in Apple Maps
+                </a>
+              </div>
+            )}
+
             {plan.notes.length > 0 && (
-              <ul className="mt-2 space-y-1 text-[11px] text-[var(--text-muted)]">
+              <ul className="mt-3 space-y-1 text-[11px] text-[var(--text-muted)]">
                 {plan.notes.map((n, i) => (
                   <li key={i}>• {n}</li>
                 ))}
@@ -340,7 +435,9 @@ export default function DrivePlanner({
                   className="border-l-2 pl-3"
                   style={{
                     borderColor:
-                      s.kind === "road" ? "var(--accent)" : "var(--border-strong)",
+                      s.kind === "road"
+                        ? "var(--accent)"
+                        : "var(--border-strong)",
                   }}
                 >
                   <div className="flex items-baseline justify-between gap-2">
@@ -361,34 +458,16 @@ export default function DrivePlanner({
                     </p>
                   )}
                   {s.notes?.map((n, j) => (
-                    <p key={j} className="text-[11px] text-[color:var(--accent)]">
+                    <p
+                      key={j}
+                      className="text-[11px] text-[color:var(--accent)]"
+                    >
                       ⚠ {n}
                     </p>
                   ))}
                 </li>
               ))}
             </ol>
-
-            {links && (
-              <div className="mt-4 flex gap-2">
-                <a
-                  href={links.google}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 rounded-full border border-[var(--border)] px-3 py-2 text-center text-xs font-medium text-[var(--text)] hover:bg-[var(--surface-2)]"
-                >
-                  Google Maps
-                </a>
-                <a
-                  href={links.apple}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 rounded-full border border-[var(--border)] px-3 py-2 text-center text-xs font-medium text-[var(--text)] hover:bg-[var(--surface-2)]"
-                >
-                  Apple Maps
-                </a>
-              </div>
-            )}
           </div>
         )}
       </aside>

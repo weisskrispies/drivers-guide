@@ -1,21 +1,17 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import maplibregl, {
-  type Map as MlMap,
-  type GeoJSONSource,
-  type Marker,
-} from "maplibre-gl";
+import maplibregl, { type Map as MlMap, type Marker } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { Theme } from "@/lib/storage";
-import type { PlanSegment } from "@/lib/planner";
 
 const ACCENT = "#fc5200";
 
 type Point = { lat: number; lng: number; label?: string };
 
 type Props = {
-  segments: PlanSegment[];
+  /** Ordered road waypoints to pin (in drive order). */
+  waypoints: Point[];
   start: Point | null;
   stops: Point[];
   theme: Theme;
@@ -45,62 +41,18 @@ function buildStyle(theme: Theme) {
   };
 }
 
-function collection(segments: PlanSegment[]) {
-  return {
-    type: "FeatureCollection" as const,
-    features: segments
-      .filter((s) => s.path.length >= 2)
-      .map((s) => ({
-        type: "Feature" as const,
-        properties: { connector: s.kind === "road" ? 0 : 1 },
-        geometry: {
-          type: "LineString" as const,
-          coordinates: s.path,
-        },
-      })),
-  };
-}
-
-function addLayers(map: MlMap, theme: Theme) {
-  map.addSource("plan", {
-    type: "geojson",
-    data: { type: "FeatureCollection", features: [] },
-  });
-  map.addLayer({
-    id: "plan-casing",
-    type: "line",
-    source: "plan",
-    paint: {
-      "line-color": theme === "dark" ? "#000000" : "#ffffff",
-      "line-width": 8,
-      "line-opacity": 0.7,
-    },
-    layout: { "line-cap": "round", "line-join": "round" },
-  });
-  map.addLayer({
-    id: "plan-road",
-    type: "line",
-    source: "plan",
-    filter: ["==", ["get", "connector"], 0],
-    paint: { "line-color": ACCENT, "line-width": 5 },
-    layout: { "line-cap": "round", "line-join": "round" },
-  });
-  map.addLayer({
-    id: "plan-connector",
-    type: "line",
-    source: "plan",
-    filter: ["==", ["get", "connector"], 1],
-    paint: {
-      "line-color": "#8b8782",
-      "line-width": 3,
-      "line-dasharray": [1.5, 1.5],
-    },
-    layout: { "line-cap": "round", "line-join": "round" },
-  });
+function dot(bg: string, text: string, label: string) {
+  const el = document.createElement("div");
+  el.className =
+    "flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-semibold ring-2 ring-white shadow-[0_2px_8px_rgba(0,0,0,0.4)]";
+  el.style.background = bg;
+  el.style.color = text;
+  el.title = label;
+  return el;
 }
 
 export default function PlannerMap({
-  segments,
+  waypoints,
   start,
   stops,
   theme,
@@ -141,63 +93,74 @@ export default function PlannerMap({
     };
   }, []);
 
-  // Theme swap.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     map.setStyle(buildStyle(theme));
-    map.once("styledata", () => {
-      if (!map.getSource("plan")) addLayers(map, theme);
-      const src = map.getSource("plan") as GeoJSONSource | undefined;
-      src?.setData(collection(segments));
-    });
-  }, [theme, segments]);
+  }, [theme]);
 
-  // Data + markers + fit.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
     const render = () => {
-      if (!map.getSource("plan")) addLayers(map, themeRef.current);
-      const src = map.getSource("plan") as GeoJSONSource | undefined;
-      src?.setData(collection(segments));
-
       markersRef.current.forEach((m) => m.remove());
       markersRef.current = [];
 
       if (start) {
-        const el = document.createElement("div");
-        el.className =
-          "flex h-6 w-6 items-center justify-center rounded-full text-white ring-2 ring-white shadow-[0_2px_8px_rgba(0,0,0,0.4)]";
-        el.style.background = ACCENT;
-        el.title = start.label ?? "Start";
+        const el = dot(ACCENT, "#fff", start.label ?? "Start");
         el.innerHTML =
-          '<svg viewBox="0 0 20 20" fill="currentColor" style="width:12px;height:12px"><path d="M10.707 2.293a1 1 0 0 0-1.414 0l-7 7A1 1 0 0 0 3 11h1v6a1 1 0 0 0 1 1h3v-4a2 2 0 1 1 4 0v4h3a1 1 0 0 0 1-1v-6h1a1 1 0 0 0 .707-1.707l-7-7Z"/></svg>';
+          '<svg viewBox="0 0 20 20" fill="currentColor" style="width:13px;height:13px"><path d="M10.707 2.293a1 1 0 0 0-1.414 0l-7 7A1 1 0 0 0 3 11h1v6a1 1 0 0 0 1 1h3v-4a2 2 0 1 1 4 0v4h3a1 1 0 0 0 1-1v-6h1a1 1 0 0 0 .707-1.707l-7-7Z"/></svg>';
         markersRef.current.push(
           new maplibregl.Marker({ element: el, anchor: "center" })
             .setLngLat([start.lng, start.lat])
+            .setPopup(
+              new maplibregl.Popup({ offset: 16 }).setText(
+                start.label ?? "Start",
+              ),
+            )
             .addTo(map),
         );
       }
-      stops.forEach((s, i) => {
-        const el = document.createElement("div");
-        el.className =
-          "flex h-6 w-6 items-center justify-center rounded-full bg-[#7c3aed] text-[11px] font-semibold text-white ring-2 ring-white shadow-[0_2px_8px_rgba(0,0,0,0.4)]";
+
+      waypoints.forEach((w, i) => {
+        const el = dot(ACCENT, "#fff", w.label ?? `Stop ${i + 1}`);
         el.textContent = String(i + 1);
-        el.title = s.label ?? `Stop ${i + 1}`;
+        markersRef.current.push(
+          new maplibregl.Marker({ element: el, anchor: "center" })
+            .setLngLat([w.lng, w.lat])
+            .setPopup(
+              new maplibregl.Popup({ offset: 16 }).setText(
+                `${i + 1}. ${w.label ?? "Waypoint"}`,
+              ),
+            )
+            .addTo(map),
+        );
+      });
+
+      stops.forEach((s, i) => {
+        const el = dot("#7c3aed", "#fff", s.label ?? `Stop ${i + 1}`);
+        el.innerHTML =
+          '<svg viewBox="0 0 20 20" fill="currentColor" style="width:12px;height:12px"><path d="M10 2a6 6 0 0 0-6 6c0 4.5 6 10 6 10s6-5.5 6-10a6 6 0 0 0-6-6Zm0 8.25a2.25 2.25 0 1 1 0-4.5 2.25 2.25 0 0 1 0 4.5Z"/></svg>';
         markersRef.current.push(
           new maplibregl.Marker({ element: el, anchor: "center" })
             .setLngLat([s.lng, s.lat])
+            .setPopup(
+              new maplibregl.Popup({ offset: 16 }).setText(
+                s.label ?? `Stop ${i + 1}`,
+              ),
+            )
             .addTo(map),
         );
       });
 
       const pts: [number, number][] = [];
-      for (const s of segments) for (const c of s.path) pts.push(c);
       if (start) pts.push([start.lng, start.lat]);
+      for (const w of waypoints) pts.push([w.lng, w.lat]);
       for (const s of stops) pts.push([s.lng, s.lat]);
-      if (pts.length > 0) {
+      if (pts.length === 1) {
+        map.easeTo({ center: pts[0], zoom: 11, duration: 500 });
+      } else if (pts.length > 1) {
         const lngs = pts.map((p) => p[0]);
         const lats = pts.map((p) => p[1]);
         map.fitBounds(
@@ -205,14 +168,14 @@ export default function PlannerMap({
             [Math.min(...lngs), Math.min(...lats)],
             [Math.max(...lngs), Math.max(...lats)],
           ],
-          { padding: 60, maxZoom: 13, duration: 600 },
+          { padding: 70, maxZoom: 12, duration: 600 },
         );
       }
     };
 
     if (map.isStyleLoaded()) render();
     else map.once("load", render);
-  }, [segments, start, stops]);
+  }, [waypoints, start, stops, theme]);
 
   return <div ref={containerRef} className="h-full w-full" />;
 }
