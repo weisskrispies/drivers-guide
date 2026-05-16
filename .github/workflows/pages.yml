@@ -38,6 +38,9 @@ jobs:
         continue-on-error: true
 
       - name: Persist fetched geometry
+        # Never allowed to fail the deploy — persistence is a nice-to-have,
+        # shipping the site is not.
+        continue-on-error: true
         # Commit upgraded geometry back to the branch so it's permanent:
         # once a road is routed it never regresses to the coarse
         # approximation, even if a later OSRM fetch fails. Pushing with
