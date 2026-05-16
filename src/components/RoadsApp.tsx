@@ -12,6 +12,7 @@ import MobileCardCarousel from "./MobileCardCarousel";
 import IntroSection from "./IntroSection";
 import RoadFocused from "./RoadFocused";
 import ThemeToggle from "./ThemeToggle";
+import DrivePlanner from "./DrivePlanner";
 import type { MapHandle } from "./RoadMap";
 
 // maplibre-gl touches `window` on import; keep the map client-only.
@@ -46,6 +47,7 @@ export default function RoadsApp() {
   const themeLocation = currentLocation ?? home ?? null;
   const { theme } = useTheme(themeLocation);
 
+  const [mode, setMode] = useState<"explore" | "plan">("explore");
   const [sortBy, setSortBy] = useState<SortBy>("distance");
   const [showDone, setShowDone] = useState(true);
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
@@ -217,8 +219,25 @@ export default function RoadsApp() {
             </button>
           </div>
 
-          {/* Right: theme toggle + profile */}
+          {/* Right: mode toggle + theme + profile */}
           <div className="flex items-center gap-2">
+            <div className="flex rounded-full border border-[var(--border)] bg-[var(--surface)] p-0.5 text-[12px] font-medium">
+              {(["explore", "plan"] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMode(m)}
+                  aria-pressed={mode === m}
+                  className={`rounded-full px-3 py-1 transition-colors ${
+                    mode === m
+                      ? "bg-[color:var(--accent)] text-white"
+                      : "text-[var(--text-muted)] hover:text-[var(--text)]"
+                  }`}
+                >
+                  {m === "explore" ? "Explore" : "Plan a drive"}
+                </button>
+              ))}
+            </div>
             <ThemeToggle />
             <ProfileMenu
               doneCount={doneCount}
@@ -244,6 +263,17 @@ export default function RoadsApp() {
         onClose={() => setIntroOpen(false)}
       />
 
+      {mode === "plan" ? (
+        <DrivePlanner
+          roads={ROADS}
+          home={home}
+          currentLocation={currentLocation}
+          onRequestGeo={requestGeo}
+          usingGps={!!currentLocation}
+          theme={theme}
+        />
+      ) : (
+        <>
       {/* One RoadMap, two layouts via CSS:
           - Mobile: map fills the viewport, list collapses to a bottom-sheet
             card overlaid on the map
@@ -333,6 +363,8 @@ export default function RoadsApp() {
           onToggleDone={() => toggle(focusedEntry.road.slug)}
           onClose={handleCloseFocus}
         />
+      )}
+        </>
       )}
     </div>
   );
