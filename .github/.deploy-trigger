@@ -1,0 +1,8 @@
+Bump this file to trigger the Pages deploy workflow.
+
+The branch tip already contains the current app (pins-only planner map,
+Home as default start). This commit exists only to fire the
+"Deploy to GitHub Pages" workflow via the GitHub API, since pushes from
+the automation bot do not trigger on:push runs.
+
+trigger: 2026-05-16T19:30:00Z
