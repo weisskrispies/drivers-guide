@@ -5,7 +5,6 @@ import maplibregl, {
   type Map as MlMap,
   type Marker,
   type LngLatBoundsLike,
-  type GeoJSONSource,
   type IControl,
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -35,8 +34,6 @@ type Props = {
   onRequestGeo: () => void;
 };
 
-const ACCENT = "#fc5200";
-
 function buildStyle(theme: Theme) {
   const isDark = theme === "dark";
   const base = isDark ? "dark_all" : "rastertiles/voyager";
@@ -60,32 +57,6 @@ function buildStyle(theme: Theme) {
     layers: [
       { id: "basemap", type: "raster" as const, source: "basemap" },
     ],
-  };
-}
-
-function lineCasing(theme: Theme) {
-  return theme === "dark" ? "#000000" : "#ffffff";
-}
-
-function routeFeatures(
-  roads: Road[],
-  activeSlug: string | null,
-  done: Set<string>,
-) {
-  return {
-    type: "FeatureCollection" as const,
-    features: roads.map((road) => ({
-      type: "Feature" as const,
-      properties: {
-        slug: road.slug,
-        active: road.slug === activeSlug ? 1 : 0,
-        done: done.has(road.slug) ? 1 : 0,
-      },
-      geometry: {
-        type: "LineString" as const,
-        coordinates: road.path,
-      },
-    })),
   };
 }
 
@@ -243,40 +214,15 @@ export default function RoadMap({
     };
   }, []);
 
-  // Swap basemap when the theme changes — re-add our layers afterwards.
-  // CRITICAL: this effect MUST only depend on `theme`. Including `roads`
-  // or `done` here calls map.setStyle() on every parent re-render (the
-  // roads array gets a new identity from `.map()` every render), which
-  // tears down and recreates the entire style — and cancels any
-  // in-progress flyTo/fitBounds animation. That's what was killing
-  // list-click fits after the first interaction.
+  // Swap basemap when the theme changes. Markers are DOM elements, not
+  // style layers, so they survive setStyle and don't need re-adding.
+  // MUST depend only on `theme` (the roads array gets a new identity
+  // every render; depending on it would thrash setStyle and cancel
+  // in-progress fit/fly animations).
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     map.setStyle(buildStyle(theme));
-    const apply = () => {
-      if (!map.getSource("routes")) {
-        addRoutesLayers(map, theme, {
-          onSelect: (slug) => onSelectRef.current(slug),
-          onOpen: (slug) => onOpenRef.current?.(slug),
-          getActiveSlug: () => activeSlugRef.current,
-        });
-      }
-      const src = map.getSource("routes") as GeoJSONSource | undefined;
-      if (src) {
-        src.setData(
-          routeFeatures(
-            roadsRef.current,
-            activeSlugRef.current,
-            doneRef.current,
-          ),
-        );
-      }
-      if (map.getLayer("routes-casing")) {
-        map.setPaintProperty("routes-casing", "line-color", lineCasing(theme));
-      }
-    };
-    map.once("styledata", apply);
   }, [theme]);
 
   // Fly to GPS fix when one arrives — on the very first fix, and any time
@@ -303,27 +249,6 @@ export default function RoadMap({
     if (map.isStyleLoaded()) doFly();
     else map.once("load", doFly);
   }, [currentLocation]);
-
-  // Routes source + layers.
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-
-    const ensure = () => {
-      if (!map.getSource("routes")) {
-        addRoutesLayers(map, themeRef.current, {
-          onSelect: (slug) => onSelectRef.current(slug),
-          onOpen: (slug) => onOpenRef.current?.(slug),
-          getActiveSlug: () => activeSlugRef.current,
-        });
-      }
-      const src = map.getSource("routes") as GeoJSONSource | undefined;
-      if (src) src.setData(routeFeatures(roads, activeSlug, done));
-    };
-
-    if (map.isStyleLoaded()) ensure();
-    else map.once("load", ensure);
-  }, [roads, done, activeSlug]);
 
   // Marker reconciliation — keyed by slug, never recreated unless slug set
   // changes.
@@ -512,69 +437,3 @@ export default function RoadMap({
   return <div ref={containerRef} className="h-full w-full" />;
 }
 
-type RouteHandlers = {
-  onSelect: (slug: string) => void;
-  onOpen?: (slug: string) => void;
-  getActiveSlug: () => string | null;
-};
-
-function addRoutesLayers(map: MlMap, theme: Theme, handlers: RouteHandlers) {
-  map.addSource("routes", {
-    type: "geojson",
-    data: { type: "FeatureCollection", features: [] },
-  });
-
-  map.addLayer({
-    id: "routes-casing",
-    type: "line",
-    source: "routes",
-    paint: {
-      "line-color": lineCasing(theme),
-      "line-width": [
-        "interpolate",
-        ["linear"],
-        ["zoom"],
-        6, ["case", ["==", ["get", "active"], 1], 5, 3],
-        12, ["case", ["==", ["get", "active"], 1], 11, 7],
-      ],
-      "line-opacity": 0.85,
-    },
-    layout: { "line-cap": "round", "line-join": "round" },
-  });
-
-  map.addLayer({
-    id: "routes-line",
-    type: "line",
-    source: "routes",
-    paint: {
-      "line-color": ACCENT,
-      "line-width": [
-        "interpolate",
-        ["linear"],
-        ["zoom"],
-        6, ["case", ["==", ["get", "active"], 1], 3, 1.5],
-        12, ["case", ["==", ["get", "active"], 1], 7, 3.5],
-      ],
-      "line-opacity": [
-        "case",
-        ["==", ["get", "active"], 1],
-        1,
-        0.75,
-      ],
-    },
-    layout: { "line-cap": "round", "line-join": "round" },
-  });
-
-  map.on("click", "routes-line", (e) => {
-    const slug = e.features?.[0]?.properties?.slug;
-    if (typeof slug !== "string") return;
-    if (slug === handlers.getActiveSlug()) handlers.onOpen?.(slug);
-    else handlers.onSelect(slug);
-  });
-  map.on("mouseenter", "routes-line", () => {
-    map.getCanvas().style.cursor = "pointer";
-  });
-  map.on("mouseleave", "routes-line", () => {
-    map.getCanvas().style.cursor = "";
-  });
-}
