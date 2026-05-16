@@ -211,32 +211,48 @@ export function planDrive(roads: Road[], input: PlannerInput): DrivePlan {
   let totalMin = 0;
 
   const progress = () => (targetIsDuration ? totalMin : totalMi);
-  const reached = () => progress() >= targetValue * 0.95;
+  const inMetric = (miles: number) =>
+    targetIsDuration ? (miles / CONNECTOR_AVG_MPH) * 60 : miles;
+  const roadMetric = (r: Road) =>
+    targetIsDuration ? roadDurationMinutes(r) : roadDistanceMiles(r);
+  // Reserve budget for the leg home so a loop lands near the target
+  // instead of blowing past it on the return.
+  const returnReserve = (from: LatLng) =>
+    loop ? inMetric(haversineMiles(from, input.start)) : 0;
+  const cap = targetValue * 1.15;
 
   while (segments.filter((s) => s.kind === "road").length < MAX_ROADS) {
-    if (reached()) break;
+    // Stop once the target is effectively met, accounting for the
+    // (reserved) trip back to start.
+    if (progress() + returnReserve(current) >= targetValue) break;
 
     let best: { o: Oriented; value: number } | null = null;
+    let fallback: { o: Oriented; value: number } | null = null;
     for (const road of candidates) {
       if (visited.has(road.slug)) continue;
       const o = orient(road, current);
       const connectorMi = haversineMiles(current, o.entry);
       const roadMi = roadDistanceMiles(road);
-      const addend = targetIsDuration ? roadDurationMinutes(road) : roadMi;
-      if (
-        segments.some((s) => s.kind === "road") &&
-        progress() + addend > targetValue * 1.4
-      ) {
-        continue;
-      }
+      const projected =
+        progress() +
+        inMetric(connectorMi) +
+        roadMetric(road) +
+        returnReserve(o.exit);
       const value =
         enjoymentScore(road) / (1 + connectorMi * 0.6) -
         (connectorMi > roadMi ? 0.5 : 0);
-      if (!best || value > best.value) best = { o, value };
+      if (!fallback || value > fallback.value) fallback = { o, value };
+      if (projected <= cap && (!best || value > best.value)) {
+        best = { o, value };
+      }
     }
 
-    if (!best) break;
-    const { o } = best;
+    // Always yield at least one road, even if the target is tighter
+    // than the nearest road + its return leg.
+    const hasRoad = segments.some((s) => s.kind === "road");
+    const chosen = best ?? (hasRoad ? null : fallback);
+    if (!chosen) break;
+    const { o } = chosen;
 
     const connector = straightConnector(
       current,
