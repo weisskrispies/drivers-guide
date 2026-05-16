@@ -10,6 +10,7 @@ import maplibregl, {
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { Road, LatLng } from "@/lib/roads/types";
 import type { Theme } from "@/lib/storage";
+import { haversineMiles } from "@/lib/geo";
 
 /** Imperative handle exposed to RoadsApp so list clicks can fly the map
  *  directly, no useEffect / state propagation in the loop. The slug is
@@ -240,14 +241,43 @@ export default function RoadMap({
     if (!isFirst && !recenterRequested) return;
     gotFirstGpsRef.current = true;
     pendingRecenterRef.current = false;
-    const doFly = () =>
-      map.flyTo({
-        center: [currentLocation.lng, currentLocation.lat],
-        zoom: Math.max(map.getZoom(), 12),
-        speed: 1.2,
-      });
-    if (map.isStyleLoaded()) doFly();
-    else map.once("load", doFly);
+    // Frame the user plus the nearest few roads, so the default view is
+    // "where I am + my closest options" rather than the whole region.
+    const doFit = () => {
+      const me = { lat: currentLocation.lat, lng: currentLocation.lng };
+      const nearest = [...roadsRef.current]
+        .map((r) => ({
+          r,
+          d: haversineMiles(me, { lat: r.start.lat, lng: r.start.lng }),
+        }))
+        .sort((a, b) => a.d - b.d)
+        .slice(0, 3);
+      const pts: [number, number][] = [
+        [me.lng, me.lat],
+        ...nearest.map(
+          ({ r }) => [r.start.lng, r.start.lat] as [number, number],
+        ),
+      ];
+      if (pts.length < 2) {
+        map.flyTo({
+          center: [me.lng, me.lat],
+          zoom: Math.max(map.getZoom(), 12),
+          speed: 1.2,
+        });
+        return;
+      }
+      const lngs = pts.map((p) => p[0]);
+      const lats = pts.map((p) => p[1]);
+      map.fitBounds(
+        [
+          [Math.min(...lngs), Math.min(...lats)],
+          [Math.max(...lngs), Math.max(...lats)],
+        ],
+        { padding: 80, maxZoom: 13, duration: 900, essential: true },
+      );
+    };
+    if (map.isStyleLoaded()) doFit();
+    else map.once("load", doFit);
   }, [currentLocation]);
 
   // Marker reconciliation — keyed by slug, never recreated unless slug set

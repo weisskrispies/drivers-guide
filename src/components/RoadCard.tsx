@@ -95,9 +95,6 @@ export default function RoadCard({
             className={[
               "mt-1 font-semibold leading-snug tracking-tight text-[var(--text)]",
               compact ? "truncate text-[15px]" : active ? "text-[17px]" : "text-[15px]",
-              done
-                ? "line-through decoration-[color:var(--accent)] decoration-2"
-                : "",
             ].join(" ")}
           >
             {road.name}

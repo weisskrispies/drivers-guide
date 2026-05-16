@@ -3,6 +3,13 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import type { LatLng } from "./roads/types";
 import { isDaylight, nextSunTransition } from "./sun";
+import {
+  getDriveToken,
+  isSyncConfigured,
+  pullState,
+  pushState,
+  type SyncState,
+} from "./driveSync";
 
 const KEY_HOME = "driversguide.home";
 const KEY_DONE = "driversguide.completions";
@@ -189,4 +196,111 @@ export function useTheme(location?: LatLng | null) {
   }, []);
 
   return { theme, themePref: pref, setThemePref, toggle };
+}
+
+// ---------------------------------------------------------------------------
+// Cross-device sync (Google Drive appData). Strictly additive: localStorage
+// stays the working store; this layers sync on top and fails safe.
+// ---------------------------------------------------------------------------
+
+const KEY_SYNC = "driversguide.syncEnabled";
+
+export type SyncStatus = "off" | "connecting" | "on" | "error";
+
+function localState(): SyncState {
+  const done = parseJson<string[]>(readRaw(KEY_DONE));
+  const home = parseJson<HomeLocation>(readRaw(KEY_HOME));
+  return {
+    v: 1,
+    completions: Array.isArray(done) ? done : [],
+    home: home ? { lat: home.lat, lng: home.lng, label: home.label } : null,
+    updatedAt: Date.now(),
+  };
+}
+
+/** Merge remote into local: union completions (additions never lost);
+ *  adopt remote Home only if none is set locally. Writes via writeRaw so
+ *  the existing hooks re-render. */
+function applyRemote(state: SyncState): void {
+  const merged = toSet(parseJson<string[]>(readRaw(KEY_DONE)));
+  for (const s of state.completions) merged.add(s);
+  writeRaw(KEY_DONE, JSON.stringify(Array.from(merged)));
+  const localHome = parseJson<HomeLocation>(readRaw(KEY_HOME));
+  if (!localHome && state.home) {
+    writeRaw(KEY_HOME, JSON.stringify(state.home));
+  }
+}
+
+export function useSync() {
+  const enabledRaw = useLocalStorageString(KEY_SYNC);
+  const [status, setStatus] = useState<SyncStatus>("off");
+  const configured = isSyncConfigured();
+
+  // Auto-resume on load if previously enabled. Setting status from this
+  // async data-sync effect is the intended pattern.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (!configured || enabledRaw !== "1") return;
+    let cancelled = false;
+    setStatus("connecting");
+    (async () => {
+      const token = await getDriveToken(true);
+      if (cancelled) return;
+      if (!token) {
+        setStatus("error");
+        return;
+      }
+      const remote = await pullState(token);
+      if (cancelled) return;
+      if (remote) applyRemote(remote);
+      await pushState(token, localState());
+      if (!cancelled) setStatus("on");
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [configured, enabledRaw]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  // Push local changes (debounced) while syncing.
+  useEffect(() => {
+    if (status !== "on") return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const schedule = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(async () => {
+        const token = await getDriveToken(true);
+        if (token) await pushState(token, localState());
+      }, 1500);
+    };
+    const offDone = subscribe(KEY_DONE, schedule);
+    const offHome = subscribe(KEY_HOME, schedule);
+    return () => {
+      if (timer) clearTimeout(timer);
+      offDone();
+      offHome();
+    };
+  }, [status]);
+
+  const enable = useCallback(async () => {
+    if (!configured) return;
+    setStatus("connecting");
+    const token = await getDriveToken(false);
+    if (!token) {
+      setStatus("error");
+      return;
+    }
+    const remote = await pullState(token);
+    if (remote) applyRemote(remote);
+    await pushState(token, localState());
+    writeRaw(KEY_SYNC, "1");
+    setStatus("on");
+  }, [configured]);
+
+  const disable = useCallback(() => {
+    writeRaw(KEY_SYNC, null);
+    setStatus("off");
+  }, []);
+
+  return { status, configured, enable, disable };
 }

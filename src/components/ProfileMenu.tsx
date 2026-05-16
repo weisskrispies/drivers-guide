@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useTheme, type HomeLocation } from "@/lib/storage";
+import { useTheme, useSync, type HomeLocation } from "@/lib/storage";
 import type { LatLng } from "@/lib/roads/types";
 import { levelForCount } from "@/lib/gamification";
 import { signOut, useAuth, useGoogleSignInButton } from "@/lib/auth";
@@ -56,6 +56,7 @@ export default function ProfileMenu({
   const [signOutBusy, setSignOutBusy] = useState(false);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const auth = useAuth();
+  const sync = useSync();
   const { theme } = useTheme();
   // ref-callback that mounts Google's official button into the div the
   // first time it appears in the DOM (i.e. when the popover opens).
@@ -189,6 +190,53 @@ export default function ProfileMenu({
                 ref={buttonMount}
                 className="mt-2 flex min-h-[40px] items-center justify-center"
               />
+            )}
+          </section>
+
+          <Divider />
+
+          {/* Sync */}
+          <section>
+            <h3 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-dim)]">
+              Sync
+            </h3>
+            {!sync.configured ? (
+              <p className="mt-2 text-[12px] text-[var(--text-muted)]">
+                Cross-device sync needs Google sign-in configured for this
+                deployment.
+              </p>
+            ) : (
+              <>
+                <p className="mt-2 text-[12px] text-[var(--text-muted)]">
+                  {sync.status === "on"
+                    ? "On — completions & Home follow your Google account across devices."
+                    : sync.status === "connecting"
+                      ? "Connecting…"
+                      : sync.status === "error"
+                        ? "Couldn’t connect. Your data is safe on this device — retry below."
+                        : "Off — data is saved only on this device."}
+                </p>
+                {sync.status === "on" ? (
+                  <button
+                    type="button"
+                    onClick={sync.disable}
+                    className="mt-2 rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-[var(--text)] hover:border-[var(--border-strong)]"
+                  >
+                    Turn off sync
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={sync.status === "connecting"}
+                    onClick={sync.enable}
+                    className="mt-2 rounded-full bg-[color:var(--accent)] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[color:var(--accent-hover)] disabled:opacity-60"
+                  >
+                    {sync.status === "error"
+                      ? "Retry sync"
+                      : "Enable cross-device sync"}
+                  </button>
+                )}
+              </>
             )}
           </section>
 
