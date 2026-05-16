@@ -38,8 +38,8 @@ const ENDPOINTS = (
   .map((s) => s.trim())
   .filter(Boolean);
 
-const RATE_LIMIT_MS = Number(process.env.OSRM_DELAY_MS ?? 700);
-const MAX_ATTEMPTS = 3;
+const RATE_LIMIT_MS = Number(process.env.OSRM_DELAY_MS ?? 1200);
+const MAX_ATTEMPTS = Number(process.env.OSRM_MAX_ATTEMPTS ?? 4);
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -53,10 +53,13 @@ async function tryFetch(endpoint, waypoints) {
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
       const res = await fetch(url, {
-        headers: { "user-agent": "drivers-guide/1.0" },
+        headers: { "user-agent": "drivers-guide/1.0 (+github-actions)" },
       });
-      if (res.status === 429 || res.status >= 500) {
-        await sleep(1500 * attempt);
+      // 403/429/5xx from public OSRM are typically transient load
+      // shedding — back off (with jitter) and retry rather than failing
+      // straight over to a coarser strategy.
+      if (res.status === 403 || res.status === 429 || res.status >= 500) {
+        await sleep(2000 * attempt + Math.floor(Math.random() * 500));
         continue;
       }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
