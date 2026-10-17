@@ -27,22 +27,24 @@ type Props = {
   onPick?: (p: { lat: number; lng: number }) => void;
 };
 
-function buildStyle(theme: Theme) {
-  const base = theme === "dark" ? "dark_all" : "rastertiles/voyager";
+function buildStyle(_theme: Theme) {
+  // CARTO rastertiles require an API key as of late 2026 — switched to
+  // raw OpenStreetMap. Dark mode is handled by a CSS filter on the map
+  // canvas (see globals.css) so this call-site doesn't branch on theme.
+  void _theme;
   return {
     version: 8 as const,
     sources: {
       basemap: {
         type: "raster" as const,
         tiles: [
-          `https://a.basemaps.cartocdn.com/${base}/{z}/{x}/{y}@2x.png`,
-          `https://b.basemaps.cartocdn.com/${base}/{z}/{x}/{y}@2x.png`,
-          `https://c.basemaps.cartocdn.com/${base}/{z}/{x}/{y}@2x.png`,
-          `https://d.basemaps.cartocdn.com/${base}/{z}/{x}/{y}@2x.png`,
+          "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
+          "https://b.tile.openstreetmap.org/{z}/{x}/{y}.png",
+          "https://c.tile.openstreetmap.org/{z}/{x}/{y}.png",
         ],
         tileSize: 256,
         attribution:
-          '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>',
+          '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxzoom: 19,
       },
     },
