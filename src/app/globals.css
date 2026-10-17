@@ -114,6 +114,14 @@ body::before {
   color: var(--text);
   background: var(--surface);
 }
+
+/* Dark-mode basemap. We're on raw OSM raster tiles (keyless), which
+   only ships a light style. Approximating "dark mode" by inverting the
+   tile canvas and shifting hues — not a true dark cartography but good
+   enough to keep the theme consistent. */
+:root.dark .maplibregl-canvas {
+  filter: invert(0.92) hue-rotate(180deg) saturate(0.85) brightness(0.95);
+}
 .maplibregl-ctrl-group button.locate-btn {
   display: flex;
   align-items: center;

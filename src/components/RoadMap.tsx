@@ -35,23 +35,26 @@ type Props = {
   onRequestGeo: () => void;
 };
 
-function buildStyle(theme: Theme) {
-  const isDark = theme === "dark";
-  const base = isDark ? "dark_all" : "rastertiles/voyager";
+function buildStyle(_theme: Theme) {
+  // CARTO's rastertiles started requiring an API key in late 2026 (the
+  // basemaps watermark reads "API KEY REQUIRED"). Switched to raw
+  // OpenStreetMap raster tiles — no API key required, free, with
+  // standard attribution. For "dark" mode we leave the tiles as-is and
+  // apply a canvas-level CSS filter in globals.css to invert them.
+  void _theme;
   return {
     version: 8 as const,
     sources: {
       basemap: {
         type: "raster" as const,
         tiles: [
-          `https://a.basemaps.cartocdn.com/${base}/{z}/{x}/{y}@2x.png`,
-          `https://b.basemaps.cartocdn.com/${base}/{z}/{x}/{y}@2x.png`,
-          `https://c.basemaps.cartocdn.com/${base}/{z}/{x}/{y}@2x.png`,
-          `https://d.basemaps.cartocdn.com/${base}/{z}/{x}/{y}@2x.png`,
+          "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
+          "https://b.tile.openstreetmap.org/{z}/{x}/{y}.png",
+          "https://c.tile.openstreetmap.org/{z}/{x}/{y}.png",
         ],
         tileSize: 256,
         attribution:
-          '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>',
+          '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxzoom: 19,
       },
     },
